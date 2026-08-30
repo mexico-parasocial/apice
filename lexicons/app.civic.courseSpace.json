@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "app.civic.courseSpace",
+  "description": "A permissioned space controlling access to a course before or instead of public sync.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "courseRef",
+          "ownerDid",
+          "syncMethod"
+        ],
+        "properties": {
+          "courseRef": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef"
+          },
+          "ownerDid": {
+            "type": "string",
+            "format": "did"
+          },
+          "syncMethod": {
+            "type": "string",
+            "enum": [
+              "public",
+              "permissioned"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "readAccess": {
+            "type": "array",
+            "maxLength": 1000,
+            "items": {
+              "type": "string",
+              "format": "did"
+            }
+          }
+        }
+      }
+    }
+  }
+}

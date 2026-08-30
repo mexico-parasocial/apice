@@ -1,0 +1,15 @@
+{
+  "name": "@apice/lexicons",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Civic education ATProto lexicons",
+  "files": [
+    "lexicons"
+  ],
+  "scripts": {
+    "codegen": "atproto-lexicon gen ./lexicons --out ./generated"
+  },
+  "devDependencies": {
+    "@atproto/lexicon": "^0.4.9"
+  }
+}

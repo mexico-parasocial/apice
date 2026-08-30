@@ -1,0 +1,29 @@
+# ── Secrets & environment ────────────────────────────────────────────────
+# Real env files must never enter history. Examples stay public.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# ── Dependencies & builds ────────────────────────────────────────────────
+node_modules/
+server/build/
+admin/.next/
+packages/mobile-app/dist/
+packages/mobile/dist/
+*.tsbuildinfo
+
+# ── Expo / React Native ──────────────────────────────────────────────────
+.expo/
+ios/Pods/
+ios/build/
+android/build/
+android/app/build/
+*.orig.*
+
+# ── Logs, caches, OS ─────────────────────────────────────────────────────
+*.log
+.DS_Store
+npm-debug.*
+yarn-error.log
+coverage/

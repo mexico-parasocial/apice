@@ -1,0 +1,23 @@
+{
+  "name": "apice-core",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dev:env": "./scripts/run-dev-env.sh",
+    "dev:down": "docker compose down",
+    "dev:server": "pnpm --filter server dev",
+    "dev:admin": "pnpm --filter admin dev",
+    "web": "pnpm --filter @apice/mobile-app web",
+    "android": "pnpm --filter @apice/mobile-app android",
+    "ios": "pnpm --filter @apice/mobile-app ios",
+    "typecheck": "pnpm -r typecheck",
+    "doctor": "./scripts/doctor.sh",
+    "prod:up": "docker compose -f docker-compose.prod.yml up -d",
+    "prod:down": "docker compose -f docker-compose.prod.yml down",
+    "prod:logs": "docker compose -f docker-compose.prod.yml logs -f",
+    "prod:doctor": "./scripts/doctor.sh --prod",
+    "prod:backup": "docker compose -f docker-compose.prod.yml exec backups /usr/local/bin/backup-postgres.sh"
+  },
+  "license": "GPL-3.0"
+}

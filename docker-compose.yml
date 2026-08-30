@@ -1,0 +1,96 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: apice-postgres
+    environment:
+      POSTGRES_USER: apice
+      POSTGRES_PASSWORD: apice
+      POSTGRES_DB: apice_dev
+    ports:
+      # 5432 collides with a local/Homebrew Postgres, 5433 with other local
+      # dev-infra stacks; 5434 keeps Ápice's dev DB conflict-free.
+      - "5434:5432"
+    volumes:
+      - apice_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apice -d apice_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: apice-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: apice-server
+    environment:
+      DATABASE_URL: postgresql://apice:apice@postgres:5432/apice_dev?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 8000
+      ALLOWED_ORIGINS: http://localhost:8081
+      ACCESS_TOKEN: change-me-access-token
+      REFRESH_TOKEN: change-me-refresh-token
+      ACCESS_TOKEN_EXPIRE: 300
+      REFRESH_TOKEN_EXPIRE: 1200
+      ACTIVATION_SECRET: change-me-activation-secret
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 465
+      SMTP_SERVICE: gmail
+      SMTP_MAIL: change-me@example.com
+      SMTP_PASSWORD: change-me
+      CLOUDINARY_NAME: change-me
+      CLOUDINARY_API_KEY: change-me
+      CLOUDINARY_API_SECRET: change-me
+      STRIPE_PUBLISHABLE_KEY: change-me
+      STRIPE_SECRET_KEY: change-me
+      STRIPE_ENDPOINT_SECRET: change-me
+      PDS_URL: https://bsky.social
+      PDS_SERVICE_HANDLE: change-me.bsky.social
+      PDS_SERVICE_PASSWORD: change-me
+      PDS_PUBLISH_DID: did:plc:change-me
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+
+  # Jetstream indexer — consumes app.civic.* records from the ATProto network
+  # into the NetworkCourse table. Additive: the API works without it.
+  indexer:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: apice-indexer
+    command: pnpm worker:indexer
+    environment:
+      DATABASE_URL: postgresql://apice:apice@postgres:5432/apice_dev?schema=public
+      REDIS_URL: redis://redis:6379
+      JETSTREAM_URL: wss://jetstream1.us-east.bsky.network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+volumes:
+  apice_postgres_data:

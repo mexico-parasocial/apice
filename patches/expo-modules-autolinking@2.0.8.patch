@@ -1,0 +1,19 @@
+diff --git a/build/ExpoModuleConfig.js b/build/ExpoModuleConfig.js
+index 2dfeec0e53844748f9b38d0f620583648a768ec7..bc96e8d87eccb3745590debeb316a8c36c28e191 100644
+--- a/build/ExpoModuleConfig.js
++++ b/build/ExpoModuleConfig.js
+@@ -26,6 +26,14 @@ class ExpoModuleConfig {
+                 return ['apple', 'ios', 'macos', 'tvos'].includes(supportedPlatform);
+             });
+         }
++        // A package declaring the umbrella 'apple' platform supports iOS, macOS and tvOS.
++        if (['ios', 'macos', 'tvos'].includes(platform) && supportedPlatforms.includes('apple')) {
++            return true;
++        }
++        // A package declaring the umbrella 'apple' platform supports iOS, macOS and tvOS.
++        if (['ios', 'macos', 'tvos'].includes(platform) && supportedPlatforms.includes('apple')) {
++            return true;
++        }
+         return supportedPlatforms.includes(platform);
+     }
+     /**

@@ -1,0 +1,3 @@
+[migrations]
+directory = "prisma/migrations"
+provider = "postgresql"

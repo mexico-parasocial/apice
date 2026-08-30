@@ -1,0 +1,18 @@
+# Ápice — reverse proxy (fallback path "direct-origin").
+#
+# En la arquitectura principal (Cloudflare Tunnel), el tráfico externo entra
+# por cloudflared directamente a los servicios y Caddy NO se usa. Este archivo
+# solo aplica si se expone el origen directamente:
+#   docker compose -f docker-compose.prod.yml --profile direct-origin up caddy
+
+api.apice.example.com {
+	reverse_proxy server:8000
+}
+
+admin.apice.example.com {
+	reverse_proxy admin:3000
+}
+
+vod.apice.example.com {
+	reverse_proxy streamplace-node:38080
+}

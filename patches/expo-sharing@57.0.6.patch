@@ -1,0 +1,15 @@
+diff --git a/ios/SharingModule.swift b/ios/SharingModule.swift
+index 1111111..2222222 100644
+--- a/ios/SharingModule.swift
++++ b/ios/SharingModule.swift
+@@ -14,7 +14,9 @@
+     Name("ExpoSharing")
+ 
+     AsyncFunction("shareAsync") { (url: URL, options: SharingOptions, promise: Promise) in
+-      guard FileSystemUtilities.isReadableFile(appContext, url) else {
++      // Shim: expo-sharing 57 expects a newer expo-file-system API
++      // (FileSystemUtilities.isReadableFile) than the one linked here.
++      guard FileManager.default.isReadableFile(atPath: url.path) else {
+         throw FilePermissionException()
+       }
+ 

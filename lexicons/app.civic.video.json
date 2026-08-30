@@ -1,0 +1,98 @@
+{
+  "lexicon": 1,
+  "id": "app.civic.video",
+  "description": "A video asset manifest pointing at CDN bytes and optional signed playback URLs.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "title",
+          "sources",
+          "createdAt"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "sources": {
+            "type": "array",
+            "minLength": 1,
+            "maxLength": 10,
+            "items": {
+              "type": "ref",
+              "ref": "#source"
+            }
+          },
+          "captions": {
+            "type": "array",
+            "maxLength": 20,
+            "items": {
+              "type": "ref",
+              "ref": "#captionTrack"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "durationSeconds": {
+            "type": "integer"
+          },
+          "contentKey": {
+            "type": "string",
+            "description": "Optional content-addressed key / CID for provenance"
+          }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "uri",
+        "mediaType"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "bitrate": {
+          "type": "integer"
+        },
+        "resolution": {
+          "type": "string"
+        }
+      }
+    },
+    "captionTrack": {
+      "type": "object",
+      "required": [
+        "uri",
+        "lang",
+        "label"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "lang": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

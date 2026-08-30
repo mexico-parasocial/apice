@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "rootDir": ".",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@apice/lexicons": ["../../packages/lexicons/src/index.ts"],
+      "@atproto/oauth-client-node": [
+        "./node_modules/@atproto/oauth-client-node/dist/index.d.ts"
+      ],
+      "@atproto/oauth-client": [
+        "./node_modules/@atproto/oauth-client/dist/index.d.ts"
+      ],
+      "@atproto/oauth-types": [
+        "./node_modules/@atproto/oauth-types/dist/index.d.ts"
+      ]
+    },
+    "outDir": "./build",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "build", "tests", "vitest.config.ts"]
+}

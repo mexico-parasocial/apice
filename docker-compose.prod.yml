@@ -1,0 +1,372 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: apice-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-apice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-apice_prod}
+    volumes:
+      - apice_postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apice} -d ${POSTGRES_DB:-apice_prod}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - apice
+
+  redis:
+    image: redis:7-alpine
+    container_name: apice-redis
+    restart: unless-stopped
+    volumes:
+      - apice_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - apice
+
+  # --------------------------------------------------------------------------
+  # SeaweedFS object-storage cluster (single-node starter; scale out later).
+  # --------------------------------------------------------------------------
+  seaweed-master:
+    image: chrislusf/seaweedfs:4.42
+    container_name: apice-seaweed-master
+    restart: unless-stopped
+    command: >
+      master
+      -ip.bind=0.0.0.0
+      -port=9333
+      -mdir=/data
+      -defaultReplication=${SEAWEED_DEFAULT_REPLICATION:-000}
+      -volumeSizeLimitMB=${SEAWEED_VOLUME_SIZE_LIMIT_MB:-4096}
+      -metricsPort=9324
+    volumes:
+      - seaweed_master_data:/data
+    networks:
+      - apice
+
+  seaweed-volume:
+    image: chrislusf/seaweedfs:4.42
+    container_name: apice-seaweed-volume
+    restart: unless-stopped
+    command: >
+      volume
+      -mserver=seaweed-master:9333
+      -ip.bind=0.0.0.0
+      -port=8080
+      -dir=/data
+      -max=${SEAWEED_MAX_VOLUMES:-100}
+      -metricsPort=9325
+    volumes:
+      - seaweed_volume_data:/data
+    depends_on:
+      - seaweed-master
+    networks:
+      - apice
+
+  seaweed-filer-init:
+    image: postgres:16-alpine
+    container_name: apice-seaweed-filer-init
+    restart: "no"
+    environment:
+      SEAWEED_FILER_POSTGRES_HOST: ${SEAWEED_FILER_POSTGRES_HOST:-postgres}
+      SEAWEED_FILER_POSTGRES_PORT: ${SEAWEED_FILER_POSTGRES_PORT:-5432}
+      SEAWEED_FILER_POSTGRES_USER: ${SEAWEED_FILER_POSTGRES_USER:-apice}
+      SEAWEED_FILER_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres}
+      SEAWEED_FILER_POSTGRES_DATABASE: ${SEAWEED_FILER_POSTGRES_DATABASE:-apice_prod}
+    volumes:
+      - ./scripts/seaweedfs-filer-init.sh:/usr/local/bin/seaweedfs-filer-init.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/seaweedfs-filer-init.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - apice
+
+  seaweed-filer:
+    image: chrislusf/seaweedfs:4.42
+    container_name: apice-seaweed-filer
+    restart: unless-stopped
+    environment:
+      SEAWEED_FILER_POSTGRES_HOST: ${SEAWEED_FILER_POSTGRES_HOST:-postgres}
+      SEAWEED_FILER_POSTGRES_PORT: ${SEAWEED_FILER_POSTGRES_PORT:-5432}
+      SEAWEED_FILER_POSTGRES_USER: ${SEAWEED_FILER_POSTGRES_USER:-apice}
+      SEAWEED_FILER_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres}
+      SEAWEED_FILER_POSTGRES_DATABASE: ${SEAWEED_FILER_POSTGRES_DATABASE:-apice_prod}
+    command: >
+      filer
+      -master=seaweed-master:9333
+      -ip.bind=0.0.0.0
+      -port=8888
+      -metricsPort=9326
+    volumes:
+      - ./scripts/seaweedfs-filer-entrypoint.sh:/usr/local/bin/seaweedfs-filer-entrypoint.sh:ro
+      - seaweed_filer_data:/data
+    entrypoint: ["/bin/sh", "/usr/local/bin/seaweedfs-filer-entrypoint.sh"]
+    depends_on:
+      seaweed-filer-init:
+        condition: service_completed_successfully
+      seaweed-master:
+        condition: service_started
+      seaweed-volume:
+        condition: service_started
+    networks:
+      - apice
+
+  seaweed-s3:
+    image: chrislusf/seaweedfs:4.42
+    container_name: apice-seaweed-s3
+    restart: unless-stopped
+    environment:
+      SEAWEED_ACCESS_KEY: ${SEAWEED_ACCESS_KEY:-change-me-access-key}
+      SEAWEED_SECRET_KEY: ${SEAWEED_SECRET_KEY:-change-me-secret-key}
+    command: >
+      s3
+      -filer=seaweed-filer:8888
+      -ip.bind=0.0.0.0
+      -port=8333
+      -config=/etc/seaweedfs/s3.json
+      -metricsPort=9327
+    volumes:
+      - ./scripts/seaweedfs-s3-entrypoint.sh:/usr/local/bin/seaweedfs-s3-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/seaweedfs-s3-entrypoint.sh"]
+    depends_on:
+      seaweed-filer:
+        condition: service_started
+    networks:
+      - apice
+
+  seaweed-create-buckets:
+    image: minio/mc:latest
+    container_name: apice-seaweed-create-buckets
+    restart: "no"
+    environment:
+      SEAWEED_S3_ENDPOINT: ${SEAWEED_S3_ENDPOINT:-http://seaweed-s3:8333}
+      SEAWEED_ACCESS_KEY: ${SEAWEED_ACCESS_KEY:-change-me-access-key}
+      SEAWEED_SECRET_KEY: ${SEAWEED_SECRET_KEY:-change-me-secret-key}
+    entrypoint: >
+      /bin/sh -c "
+        sleep 5;
+        mc alias set seaweed \"\$${SEAWEED_S3_ENDPOINT}\" \"\$${SEAWEED_ACCESS_KEY}\" \"\$${SEAWEED_SECRET_KEY}\" --api S3v4;
+        mc mb seaweed/apice-videos || true;
+        mc mb seaweed/apice-assets || true;
+        mc mb seaweed/apice-backups || true;
+        exit 0;
+      "
+    depends_on:
+      seaweed-s3:
+        condition: service_started
+    networks:
+      - apice
+
+  # --------------------------------------------------------------------------
+  # Self-hosted Streamplace node. This is a scaffold; the binary and its S3
+  # playback store must be configured for your deployment.
+  # --------------------------------------------------------------------------
+  streamplace-node:
+    build:
+      context: .
+      dockerfile: streamplace/Dockerfile
+      args:
+        # Package file ID from the Streamplace package registry.
+        # 786 = streamplace-v0.11.13-linux-amd64 (see streamplace/Dockerfile).
+        STREAMPLACE_PACKAGE_FILE_ID: ${STREAMPLACE_PACKAGE_FILE_ID:-786}
+    container_name: apice-streamplace-node
+    restart: unless-stopped
+    environment:
+      SP_BROADCASTER_HOST: ${STREAMPLACE_PUBLIC_HOST:-vod.apice.example.com}
+      SP_SERVER_HOST: ${STREAMPLACE_PUBLIC_HOST:-vod.apice.example.com}
+      SP_APP_BUNDLE_ID: ${STREAMPLACE_APP_BUNDLE_ID:-com.apice.vod}
+      SP_HTTP_ADDR: 0.0.0.0:38080
+      SP_BEHIND_HTTPS_PROXY: "true"
+      SP_DB_URL: ${STREAMPLACE_DB_URL:-postgresql://apice:${POSTGRES_PASSWORD:-change-me-postgres}@postgres:5432/apice_streamplace?sslmode=disable}
+      SP_S3_ENDPOINT: ${SEAWEED_S3_ENDPOINT:-http://seaweed-s3:8333}
+      SP_S3_BUCKET: ${SEAWEED_VIDEO_BUCKET:-apice-videos}
+      SP_S3_ACCESS_KEY_ID: ${SEAWEED_ACCESS_KEY:-change-me-access-key}
+      SP_S3_SECRET_ACCESS_KEY: ${SEAWEED_SECRET_KEY:-change-me-secret-key}
+      SP_S3_REGION: ${SEAWEED_S3_REGION:-us-east-1}
+      SP_VOD_CONCURRENCY: ${STREAMPLACE_VOD_CONCURRENCY:-2}
+      SP_THUMBNAIL: "true"
+      # Upload permissions. For production use SP_ALLOWED_STREAMS with a
+      # comma-separated list of instructor DIDs. SP_WIDE_OPEN allows any DID.
+      SP_WIDE_OPEN: ${STREAMPLACE_WIDE_OPEN:-false}
+      SP_ALLOWED_STREAMS: ${STREAMPLACE_ALLOWED_STREAMS:-}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:38080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - streamplace_data:/var/lib/streamplace
+    depends_on:
+      seaweed-s3:
+        condition: service_started
+    networks:
+      - apice
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: apice-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweed-s3:
+        condition: service_started
+      streamplace-node:
+        condition: service_started
+    env_file:
+      - server/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-apice}:${POSTGRES_PASSWORD:-change-me-postgres}@postgres:5432/${POSTGRES_DB:-apice_prod}?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 8000
+    # /ready (not /health): an instance that can't reach Postgres or Redis
+    # can't serve, so it should leave rotation. start_period covers migrations
+    # and the first Prisma connect without counting as failures.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8000/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    networks:
+      - apice
+
+  # Jetstream indexer — consumes app.civic.* records from the ATProto network
+  # into the NetworkCourse table. Additive: the API works without it.
+  indexer:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: apice-indexer
+    restart: unless-stopped
+    command: node build/workers/jetstreamIndexer.js
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - server/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-apice}:${POSTGRES_PASSWORD:-change-me-postgres}@postgres:5432/${POSTGRES_DB:-apice_prod}?schema=public
+      REDIS_URL: redis://redis:6379
+      JETSTREAM_URL: ${JETSTREAM_URL:-wss://jetstream1.us-east.bsky.network}
+    networks:
+      - apice
+
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+    container_name: apice-admin
+    restart: unless-stopped
+    env_file:
+      - admin/.env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
+    networks:
+      - apice
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: apice-caddy
+    restart: unless-stopped
+    profiles:
+      # Only needed when exposing the origin directly (no Cloudflare Tunnel).
+      - direct-origin
+    depends_on:
+      # Wait for the API to pass /ready, so Caddy never fronts an instance
+      # that can't reach its database yet.
+      server:
+        condition: service_healthy
+      admin:
+        condition: service_started
+      streamplace-node:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - apice
+
+  # Cloudflare Tunnel — routes public hostnames to the internal services
+  # without opening any ports on this machine. Ingress rules (Public
+  # Hostnames) are managed in the Cloudflare Zero Trust dashboard:
+  #   api.apice.example.com   → http://server:8000
+  #   admin.apice.example.com → http://admin:3000
+  #   vod.apice.example.com   → http://streamplace-node:38080
+  # Token comes from: cloudflared tunnel token <tunnel-name>
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: apice-cloudflared
+    restart: unless-stopped
+    profiles:
+      # Enable explicitly: docker compose -f docker-compose.prod.yml --profile tunnel up -d
+      # Requires CLOUDFLARE_TUNNEL_TOKEN in .env (bogus default fails loudly in logs).
+      - tunnel
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-missing-cloudflare-tunnel-token}
+    depends_on:
+      - server
+      - admin
+      - streamplace-node
+    networks:
+      - apice
+
+  backups:
+    image: postgres:16-alpine
+    container_name: apice-backups
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - server/.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-apice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-apice_prod}
+      POSTGRES_HOST: postgres
+      BACKUP_RETENTION_DAYS: "7"
+      SEAWEED_S3_ENDPOINT: ${SEAWEED_S3_ENDPOINT:-http://seaweed-s3:8333}
+      SEAWEED_ACCESS_KEY: ${SEAWEED_ACCESS_KEY:-change-me-access-key}
+      SEAWEED_SECRET_KEY: ${SEAWEED_SECRET_KEY:-change-me-secret-key}
+      SEAWEED_BACKUPS_BUCKET: ${SEAWEED_BACKUPS_BUCKET:-apice-backups}
+    volumes:
+      - ./scripts/backup-postgres.sh:/usr/local/bin/backup-postgres.sh:ro
+    command: >
+      sh -c "echo '0 3 * * * /usr/local/bin/backup-postgres.sh' | crontab - && crond -f"
+    networks:
+      - apice
+
+volumes:
+  apice_postgres_data:
+  apice_redis_data:
+  seaweed_master_data:
+  seaweed_volume_data:
+  seaweed_filer_data:
+  streamplace_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  apice:
+    driver: bridge

@@ -1,0 +1,32 @@
+packages:
+  - 'packages/*'
+  - 'server'
+  - 'admin'
+
+overrides:
+  '@types/react': '^18.3.31'
+
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@sentry/cli'
+  - 'bufferutil'
+  - 'core-js'
+  - 'prisma'
+  - 'unrs-resolver'
+  - 'utf-8-validate'
+
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@sentry/cli': true
+  bufferutil: true
+  core-js: true
+  prisma: true
+  unrs-resolver: true
+  utf-8-validate: true
+
+patchedDependencies:
+  expo-modules-autolinking@2.0.8: patches/expo-modules-autolinking@2.0.8.patch
+  expo-video@57.0.0: patches/expo-video@57.0.0.patch
+  expo-sharing@57.0.6: patches/expo-sharing@57.0.6.patch
