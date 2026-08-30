@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "smoke:video": "ts-node-dev --transpile-only --no-notify --exit-child scripts/verify-streamplace-playback.ts",
     "test": "vitest run",
-    "worker:indexer": "ts-node-dev --transpile-only --no-notify --exit-child workers/jetstreamIndexer.ts"
+    "worker:indexer": "ts-node-dev --transpile-only --no-notify --exit-child workers/jetstreamIndexer.ts",
+    "postinstall": "prisma generate"
   },
   "license": "GPL-3.0",
   "dependencies": {
