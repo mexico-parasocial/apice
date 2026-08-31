@@ -168,6 +168,26 @@ We probed Streamplace's VOD playback chain end-to-end.
 - Apply the Prisma migration (`npx prisma migrate dev --name add_video_views`) once the PostgreSQL container is running.
 - Prebuild / pod-install the mobile app so the `expo-video` native module is linked.
 
+## Watch item: MoQ transport — `atmoq` (2026-08-31)
+
+Streamplace is building its next delivery transport: [`atmoq`](https://crates.io/crates/atmoq),
+an ATProto relay that speaks **MoQ (Media over QUIC)** to subscribers — ATProto
+records (video included) streamed over QUIC instead of classic HTTP/HLS.
+
+Why it matters to us specifically: QUIC's loss resilience is the difference
+between a lesson that stutters and one that stalls on Mexican prepaid data —
+the exact failure mode HLS (TCP-ordered) can't fix. If Streamplace ever
+exposes MoQ-backed playback for VOD, it becomes the single biggest quality
+lever available for our audience.
+
+**Do not act on it yet.** Maturity is pre-0.1: two published versions, and it
+depends on a temporary fork of `moq-net` carrying replay-window patches
+pending upstreaming. Nothing in our chain speaks MoQ — `@bsky.app/video`
+(HLS) on native, the browser player on web, Caddy/cloudflared in front.
+Revisit when (a) Streamplace nodes expose MoQ playback as an option, and
+(b) a player we already ship gains MoQ support. Until then: HLS forever,
+and keep the bitrate ladder (VIDEO_ENCODING.md) as the real lever.
+
 ## Sources
 
  Eli Mallon: https://bsky.app/profile/iame.li
@@ -177,6 +197,7 @@ We probed Streamplace's VOD playback chain end-to-end.
  Streamplace channel: https://stream.place/iame.li
  Streamplace GitHub: https://github.com/streamplace/streamplace
  Lexicons (raw): https://github.com/streamplace/streamplace/tree/next/lexicons/place/stream
+ atmoq (MoQ relay): https://crates.io/crates/atmoq
 
 ---
 
