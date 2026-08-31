@@ -2,33 +2,22 @@ import React, { useMemo, useCallback } from "react";
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   StyleSheet,
   useColorScheme,
 } from "react-native";
 import Svg, { Path, Defs, LinearGradient, Stop } from "react-native-svg";
-import { FontAwesome5, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { LessonNode } from "../hooks/useCourseProgress";
 import type { UseMutationResult } from "@tanstack/react-query";
 
 const PAD = 24;
 const ROAD_WIDTH = 8;
 const NODE_SIZE = 56;
-const ROW_HEIGHT = 140; // vertical distance between nodes
+const ROW_HEIGHT = 140;
 const LABEL_GAP = 8;
 
-/**
- * Road geometry derived from the width the component is actually given.
- *
- * This used to read Dimensions.get("window") at module scope, which freezes
- * at import time — on web the layout never responded to a browser resize, and
- * inside a max-width container it sized to the whole window instead of its
- * own box. The component measures itself via onLayout instead.
- *
- * The zig-zag amplitude has to leave room for the lesson label beside each
- * node, otherwise titles clip at the edge on phone widths.
- */
 function roadGeometry(containerWidth: number) {
   const contentWidth = Math.max(240, containerWidth - PAD * 2);
   const centerX = contentWidth / 2;
@@ -63,8 +52,6 @@ export default function LessonRoad({
   const isDark = colorScheme === "dark";
   const update = updateLesson;
 
-  // Measured from the box we're actually rendered into, so the road adapts to
-  // a browser resize and to being placed inside a max-width column.
   const [containerWidth, setContainerWidth] = React.useState(0);
   const { contentWidth, centerX, sway, labelWidth } = useMemo(
     () => roadGeometry(containerWidth),
@@ -73,8 +60,6 @@ export default function LessonRoad({
 
   const colors = useMemo(
     () => ({
-      // Brand ramp (see alf/index.tsx) — the road lives on the same purple
-      // family as the wordmark instead of a borrowed electric violet.
       road: isDark ? "#2A082F" : "#F1E3F5",
       roadDone: "#8C3AA0",
       roadAvailable: isDark ? "#A658BB" : "#D4A9E0",
@@ -85,9 +70,6 @@ export default function LessonRoad({
       nodeAvailable: "#8C3AA0",
       nodeCompleted: "#22C55E",
       nodeLocked: isDark ? "#3A3A3A" : "#D4D4D4",
-      // Checkpoint lesson: video watched but its quiz hasn't been passed yet
-      // — distinct from both "locked" and "done" so the road doesn't lie
-      // about a lesson being finished.
       nodeQuizPending: "#D4AF37",
       shadow: isDark ? "rgba(140,58,160,0.3)" : "rgba(74,16,82,0.15)",
     }),
@@ -96,25 +78,25 @@ export default function LessonRoad({
 
   const nodes = useMemo(() => {
     return lessons.map((lesson, index) => {
-      const row = Math.floor(index / 2);
       const isRight = index % 2 === 0;
       const x = isRight ? centerX + sway : centerX - sway;
-      const y = index * ROW_HEIGHT + NODE_SIZE / 2;
-      return { ...lesson, x, y, index };
+      return { ...lesson, x, index };
     });
   }, [lessons, centerX, sway]);
 
   const pathD = useMemo(() => {
     if (nodes.length === 0) return "";
-    let d = `M ${nodes[0].x} ${nodes[0].y}`;
+    let d = `M ${nodes[0].x} ${ROW_HEIGHT / 2}`;
     for (let i = 1; i < nodes.length; i++) {
-      const prev = nodes[i - 1];
-      const curr = nodes[i];
-      const cp1x = prev.x;
-      const cp1y = prev.y + ROW_HEIGHT * 0.5;
-      const cp2x = curr.x;
-      const cp2y = curr.y - ROW_HEIGHT * 0.5;
-      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curr.x} ${curr.y}`;
+      const prevX = nodes[i - 1].x;
+      const prevY = (i - 1) * ROW_HEIGHT + ROW_HEIGHT / 2;
+      const currX = nodes[i].x;
+      const currY = i * ROW_HEIGHT + ROW_HEIGHT / 2;
+      const cp1x = prevX;
+      const cp1y = prevY + ROW_HEIGHT * 0.5;
+      const cp2x = currX;
+      const cp2y = currY - ROW_HEIGHT * 0.5;
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${currX} ${currY}`;
     }
     return d;
   }, [nodes]);
@@ -139,128 +121,248 @@ export default function LessonRoad({
     [courseId, update]
   );
 
-  const renderNode = (node: LessonNode & { x: number; y: number; index: number }) => {
-    const isActive = activeLessonId === node.id;
-    const isLocked = !node.available;
-    const videoWatched = node.completed;
-    // Video watched, but a checkpoint's quiz still needs a passing attempt —
-    // shown as its own state so the road doesn't claim the lesson is done.
-    const quizPending = node.isCheckpoint && videoWatched && node.quizPassed !== true;
-    // Fully done: video watched, and the quiz (if any) is passed.
-    const isCompleted = videoWatched && (!node.isCheckpoint || node.quizPassed === true);
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: ROW_HEIGHT,
+      offset: ROW_HEIGHT * index,
+      index,
+    }),
+    []
+  );
 
-    const nodeColor = isCompleted
-      ? colors.nodeCompleted
-      : quizPending
-      ? colors.nodeQuizPending
-      : isLocked
-      ? colors.nodeLocked
-      : colors.nodeAvailable;
+  const renderItem = useCallback(
+    ({ item }: { item: LessonNode & { x: number; index: number } }) => {
+      const node = item;
+      const isActive = activeLessonId === node.id;
+      const isLocked = !node.available;
+      const videoWatched = node.completed;
+      const quizPending = node.isCheckpoint && videoWatched && node.quizPassed !== true;
+      const isCompleted = videoWatched && (!node.isCheckpoint || node.quizPassed === true);
 
-    const iconName = isCompleted
-      ? "checkmark"
-      : quizPending
-      ? "help-circle"
-      : isLocked
-      ? "lock-closed"
-      : "play";
+      const nodeColor = isCompleted
+        ? colors.nodeCompleted
+        : quizPending
+        ? colors.nodeQuizPending
+        : isLocked
+        ? colors.nodeLocked
+        : colors.nodeAvailable;
 
-    return (
-      <TouchableOpacity
-        key={node.id}
-        activeOpacity={isLocked ? 1 : 0.7}
-        onPress={() => handleNodePress(node)}
-        style={[
-          styles.node,
-          {
-            left: node.x - NODE_SIZE / 2,
-            top: node.y - NODE_SIZE / 2,
-            backgroundColor: isDark ? "#1A1A1A" : "#FFFFFF",
-            borderColor: nodeColor,
-            shadowColor: isActive ? colors.nodeAvailable : nodeColor,
-          },
-          isActive && styles.nodeActive,
-        ]}
-      >
-        <View
-          style={[
-            styles.inner,
-            {
-              backgroundColor: isCompleted
-                ? colors.nodeCompleted
-                : quizPending
-                ? colors.nodeQuizPending
-                : isLocked
-                ? colors.nodeLocked
-                : colors.nodeAvailable,
-            },
-          ]}
-        >
-          <Ionicons
-            name={iconName as any}
-            size={24}
-            color={isLocked ? (isDark ? "#666" : "#999") : "#FFFFFF"}
-          />
-        </View>
+      const iconName = isCompleted
+        ? "checkmark"
+        : quizPending
+        ? "help-circle"
+        : isLocked
+        ? "lock-closed"
+        : "play";
 
-        {/* Boss badge — marks a checkpoint lesson regardless of state, so a
-            learner can see ahead of time that a quiz gates what comes next. */}
-        {node.isCheckpoint && (
-          <View
-            style={[
-              styles.bossBadge,
-              { backgroundColor: colors.nodeQuizPending, borderColor: isDark ? "#1A1A1A" : "#FFFFFF" },
-            ]}
-          >
-            <Ionicons name="ribbon" size={11} color="#FFFFFF" />
+      const isRight = node.index % 2 === 0;
+
+      return (
+        <View style={styles.row}>
+          {/* Left side: node or spacer */}
+          <View style={styles.half}>
+            {!isRight ? (
+              <TouchableOpacity
+                activeOpacity={isLocked ? 1 : 0.7}
+                onPress={() => handleNodePress(node)}
+                style={[
+                  styles.node,
+                  {
+                    backgroundColor: isDark ? "#1A1A1A" : "#FFFFFF",
+                    borderColor: nodeColor,
+                    shadowColor: isActive ? colors.nodeAvailable : nodeColor,
+                  },
+                  isActive && styles.nodeActive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.inner,
+                    {
+                      backgroundColor: isCompleted
+                        ? colors.nodeCompleted
+                        : quizPending
+                        ? colors.nodeQuizPending
+                        : isLocked
+                        ? colors.nodeLocked
+                        : colors.nodeAvailable,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={iconName as any}
+                    size={24}
+                    color={isLocked ? (isDark ? "#666" : "#999") : "#FFFFFF"}
+                  />
+                </View>
+
+                {node.isCheckpoint && (
+                  <View
+                    style={[
+                      styles.bossBadge,
+                      { backgroundColor: colors.nodeQuizPending, borderColor: isDark ? "#1A1A1A" : "#FFFFFF" },
+                    ]}
+                  >
+                    <Ionicons name="ribbon" size={11} color="#FFFFFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: NODE_SIZE }} />
+            )}
           </View>
-        )}
 
-        <View
-          style={[
-            styles.label,
-            {
-              width: labelWidth,
-              left: node.index % 2 === 0 ? NODE_SIZE + LABEL_GAP : "auto" as any,
-              right: node.index % 2 === 0 ? "auto" as any : NODE_SIZE + LABEL_GAP,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.title,
-              { color: colors.text },
-              isLocked && { color: colors.muted },
-            ]}
-            numberOfLines={2}
-          >
-            {node.title}
-          </Text>
-          <Text style={[styles.meta, { color: colors.muted }]}>
-            {node.sectionTitle}
-            {node.videoLength ? ` · ${formatTime(node.videoLength)}` : ""}
-          </Text>
-          {quizPending && (
-            <Text style={[styles.meta, { color: colors.nodeQuizPending }]}>
-              Cuestionario pendiente
-            </Text>
-          )}
+          {/* Right side: label or node */}
+          <View style={styles.half}>
+            {isRight ? (
+              <View style={styles.labelRow}>
+                <View style={{ width: labelWidth }}>
+                  <Text
+                    style={[styles.title, { color: colors.text }, isLocked && { color: colors.muted }]}
+                    numberOfLines={2}
+                  >
+                    {node.title}
+                  </Text>
+                  <Text style={[styles.meta, { color: colors.muted }]}>
+                    {node.sectionTitle}
+                    {node.videoLength ? ` · ${formatTime(node.videoLength)}` : ""}
+                  </Text>
+                  {quizPending && (
+                    <Text style={[styles.meta, { color: colors.nodeQuizPending }]}>
+                      Cuestionario pendiente
+                    </Text>
+                  )}
+                </View>
+                <TouchableOpacity
+                  activeOpacity={isLocked ? 1 : 0.7}
+                  onPress={() => handleNodePress(node)}
+                  style={[
+                    styles.node,
+                    {
+                      backgroundColor: isDark ? "#1A1A1A" : "#FFFFFF",
+                      borderColor: nodeColor,
+                      shadowColor: isActive ? colors.nodeAvailable : nodeColor,
+                    },
+                    isActive && styles.nodeActive,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.inner,
+                      {
+                        backgroundColor: isCompleted
+                          ? colors.nodeCompleted
+                          : quizPending
+                          ? colors.nodeQuizPending
+                          : isLocked
+                          ? colors.nodeLocked
+                          : colors.nodeAvailable,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={iconName as any}
+                      size={24}
+                      color={isLocked ? (isDark ? "#666" : "#999") : "#FFFFFF"}
+                    />
+                  </View>
+
+                  {node.isCheckpoint && (
+                    <View
+                      style={[
+                        styles.bossBadge,
+                        { backgroundColor: colors.nodeQuizPending, borderColor: isDark ? "#1A1A1A" : "#FFFFFF" },
+                      ]}
+                    >
+                      <Ionicons name="ribbon" size={11} color="#FFFFFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.labelRow}>
+                <TouchableOpacity
+                  activeOpacity={isLocked ? 1 : 0.7}
+                  onPress={() => handleNodePress(node)}
+                  style={[
+                    styles.node,
+                    {
+                      backgroundColor: isDark ? "#1A1A1A" : "#FFFFFF",
+                      borderColor: nodeColor,
+                      shadowColor: isActive ? colors.nodeAvailable : nodeColor,
+                    },
+                    isActive && styles.nodeActive,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.inner,
+                      {
+                        backgroundColor: isCompleted
+                          ? colors.nodeCompleted
+                          : quizPending
+                          ? colors.nodeQuizPending
+                          : isLocked
+                          ? colors.nodeLocked
+                          : colors.nodeAvailable,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={iconName as any}
+                      size={24}
+                      color={isLocked ? (isDark ? "#666" : "#999") : "#FFFFFF"}
+                    />
+                  </View>
+
+                  {node.isCheckpoint && (
+                    <View
+                      style={[
+                        styles.bossBadge,
+                        { backgroundColor: colors.nodeQuizPending, borderColor: isDark ? "#1A1A1A" : "#FFFFFF" },
+                      ]}
+                    >
+                      <Ionicons name="ribbon" size={11} color="#FFFFFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <View style={{ width: labelWidth }}>
+                  <Text
+                    style={[styles.title, { color: colors.text }, isLocked && { color: colors.muted }]}
+                    numberOfLines={2}
+                  >
+                    {node.title}
+                  </Text>
+                  <Text style={[styles.meta, { color: colors.muted }]}>
+                    {node.sectionTitle}
+                    {node.videoLength ? ` · ${formatTime(node.videoLength)}` : ""}
+                  </Text>
+                  {quizPending && (
+                    <Text style={[styles.meta, { color: colors.nodeQuizPending }]}>
+                      Cuestionario pendiente
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Complete button below label (both sides) */}
+            {!videoWatched && !isLocked && (
+              <TouchableOpacity
+                onPress={() => handleComplete(node)}
+                style={[styles.completeButton, { backgroundColor: colors.nodeCompleted }]}
+              >
+                <Text style={styles.completeText}>Hecho</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+      );
+    },
+    [activeLessonId, colors, isDark, handleNodePress, handleComplete, labelWidth]
+  );
 
-        {!videoWatched && !isLocked && (
-          <TouchableOpacity
-            onPress={() => handleComplete(node)}
-            style={[
-              styles.completeButton,
-              { backgroundColor: colors.nodeCompleted },
-            ]}
-          >
-            <Text style={styles.completeText}>Hecho</Text>
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
-    );
-  };
+  const keyExtractor = useCallback((item: LessonNode & { index: number }) => item.id, []);
 
   if (lessons.length === 0) {
     return (
@@ -286,75 +388,59 @@ export default function LessonRoad({
         </Text>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <View
-          style={{
-            width: contentWidth,
-            height: (lessons.length - 1) * ROW_HEIGHT + NODE_SIZE + 80,
-          }}
-        >
-          <SvgPath
-            d={pathD}
-            progress={progress}
-            colors={colors}
+      <View style={{ flex: 1, paddingHorizontal: PAD }}>
+        {/* SVG path rendered behind the list as an absolute overlay */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Svg
             width={contentWidth}
-            totalLessons={lessons.length}
-            completedCount={lessons.filter((l) => l.completed).length}
-          />
-          {nodes.map(renderNode)}
+            height={lessons.length * ROW_HEIGHT}
+            viewBox={`0 0 ${contentWidth} ${lessons.length * ROW_HEIGHT}`}
+            style={{ overflow: "visible" }}
+          >
+            <Defs>
+              <LinearGradient
+                id="roadGradient"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2={lessons.length * ROW_HEIGHT}
+              >
+                <Stop offset="0" stopColor={colors.roadDone} />
+                <Stop
+                  offset={lessons.length === 0 ? 0 : lessons.filter((l) => l.completed).length / lessons.length}
+                  stopColor={colors.roadDone}
+                />
+                <Stop
+                  offset={lessons.length === 0 ? 0 : lessons.filter((l) => l.completed).length / lessons.length}
+                  stopColor={colors.roadAvailable}
+                />
+                <Stop offset="1" stopColor={colors.road} />
+              </LinearGradient>
+            </Defs>
+            <Path
+              d={pathD}
+              fill="none"
+              stroke="url(#roadGradient)"
+              strokeWidth={ROAD_WIDTH}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
         </View>
-      </ScrollView>
-    </View>
-  );
-}
 
-function SvgPath({
-  d,
-  progress,
-  colors,
-  completedCount,
-  totalLessons,
-  width,
-}: {
-  d: string;
-  progress: number;
-  colors: any;
-  completedCount: number;
-  totalLessons: number;
-  width: number;
-}) {
-  const completedRatio =
-    totalLessons === 0 ? 0 : completedCount / totalLessons;
-  const height = totalLessons * ROW_HEIGHT + 80;
-
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Svg
-        width="100%"
-        height="100%"
-        viewBox={`0 0 ${width} ${height}`}
-        style={{ overflow: "visible" }}
-      >
-        <Defs>
-          <LinearGradient id="roadGradient" x1="0" y1="0" x2="0" y2={height}>
-            <Stop offset="0" stopColor={colors.roadDone} />
-            <Stop offset={completedRatio} stopColor={colors.roadDone} />
-            <Stop offset={completedRatio} stopColor={colors.roadAvailable} />
-            <Stop offset="1" stopColor={colors.road} />
-          </LinearGradient>
-        </Defs>
-        <Path
-          d={d}
-          fill="none"
-          stroke="url(#roadGradient)"
-          strokeWidth={ROAD_WIDTH}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+        <FlatList
+          data={nodes}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          getItemLayout={getItemLayout}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 80 }}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          initialNumToRender={6}
         />
-      </Svg>
+      </View>
     </View>
   );
 }
@@ -385,12 +471,21 @@ const styles = StyleSheet.create({
     fontFamily: "Raleway_700Bold",
     fontSize: 28,
   },
-  scroll: {
-    paddingHorizontal: PAD,
-    paddingBottom: 80,
+  row: {
+    height: ROW_HEIGHT,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  half: {
+    flex: 1,
+    alignItems: "center",
+  },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: LABEL_GAP,
   },
   node: {
-    position: "absolute",
     width: NODE_SIZE,
     height: NODE_SIZE,
     borderRadius: NODE_SIZE / 2,
@@ -425,10 +520,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  label: {
-    position: "absolute",
-    top: 4,
-  },
   title: {
     fontFamily: "Raleway_700Bold",
     fontSize: 13,
@@ -440,8 +531,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   completeButton: {
-    position: "absolute",
-    bottom: -10,
+    marginTop: 4,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,

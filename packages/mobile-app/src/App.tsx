@@ -18,7 +18,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "@/hooks/useAuth";
 import { RootNavigator } from "@/navigation/RootNavigator";
-import { ThemeProvider, VideoVolumeProvider } from "@apice/mobile";
+import { ThemeProvider, VideoVolumeProvider, OfflineBanner } from "@apice/mobile";
 
 import { Platform, View, ActivityIndicator } from "react-native";
 import { initSentry } from "@/observability/sentry";
@@ -36,13 +36,21 @@ if (Platform.OS !== "web") {
 // remounts a screen and refetches every list — the app felt network-bound
 // on navigation. One minute of freshness kills most of that traffic
 // without users ever noticing stale data.
+//
+// For offline tolerance: gcTime is extended so cached data survives
+// temporary disconnections. networkMode: "offlineFirst" makes mutations
+// queue instead of failing immediately when there's no connection.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60 * 1000,
-      gcTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
       retry: 2,
       refetchOnWindowFocus: false,
+      networkMode: "offlineFirst",
+    },
+    mutations: {
+      networkMode: "offlineFirst",
     },
   },
 });
@@ -77,6 +85,7 @@ export default function App() {
         <AuthProvider>
           <ThemeProvider>
             <VideoVolumeProvider>
+              <OfflineBanner />
               <NavigationContainer>
                 <RootNavigator />
               </NavigationContainer>

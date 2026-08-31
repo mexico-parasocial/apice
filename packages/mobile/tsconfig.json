@@ -10,7 +10,8 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": ["vitest/globals"]
   },
   "include": ["src"]
 }

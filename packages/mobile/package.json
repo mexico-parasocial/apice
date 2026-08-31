@@ -4,6 +4,8 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "peerDependencies": {
+    "@react-native-async-storage/async-storage": "*",
+    "@react-native-community/netinfo": "*",
     "@tanstack/react-query": "*",
     "axios": "*",
     "expo": "*",
@@ -16,9 +18,12 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react-native": "^14.0.1",
     "@types/react": "~18.3.12",
     "@types/react-native": "~0.72.0",
     "expo-video": "^57.0.0",
+    "happy-dom": "^20.12.0",
     "typescript": "^5.8.3",
     "vitest": "^4.1.5"
   },
