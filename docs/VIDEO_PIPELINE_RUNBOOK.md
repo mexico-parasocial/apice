@@ -89,7 +89,30 @@ Expected output:
 
 If this fails, fix the node/S3/network before continuing.
 
-### Step 2 — Publish a video and save the AT URI in Ápice
+**Headless path (CLI, no browser — repeatable / CI-friendly):**
+
+```bash
+# one-time: instructor app password (NOT the account password)
+export ATPROTO_HANDLE="instructor.bsky.social"
+export ATPROTO_APP_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+# optional: STREAMPLACE_PUBLISH_URL (defaults to STREAMPLACE_VOD_BASE_URL, else stream.place)
+
+# normalize the source first (bitrate ladder tuned for prepaid data)
+./scripts/prepare-lesson-video.sh raw-capture.mp4
+
+# publish → verify playback → attach to the lesson
+cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \
+  scripts/publish-lesson-video.ts ../normalized.mp4 \
+  --title "Lección 1 — Introducción" \
+  --lesson <lessonId>
+```
+
+The script creates an app-password session, registers the upload, pushes
+the bytes over TUS (resumable), polls transcoding, publishes the
+`place.stream.video` record, verifies the playlist resolves through the
+server's own delivery provider, and attaches it to the lesson. If
+verification fails after publish it exits with the AT URI printed so you
+can retry attaching later.
 
 **Primary path (direct upload from the admin):**
 

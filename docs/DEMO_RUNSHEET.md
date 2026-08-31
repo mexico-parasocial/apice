@@ -179,6 +179,16 @@ Para volver a conectarlo si algo se desconfigura:
 cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/attach-lesson-video.ts "http://127.0.0.1:8000/demo-media/TESTCLIP.MP4" --first-only
 ```
 
+Para publicar un video REAL al nodo (sin navegador) y dejar el fixture:
+ver `docs/VIDEO_PIPELINE_RUNBOOK.md` §"Headless path" y
+`docs/PILOT_CHECKLIST.md`. Resumen:
+
+```bash
+export ATPROTO_HANDLE="…" ATPROTO_APP_PASSWORD="…"
+cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \
+  scripts/publish-lesson-video.ts ../lesson.mp4 --title "…" --lesson <lessonId>
+```
+
 > La reproducción exige identidad Bluesky verificada. `seed-demo-users.ts` le
 > pone un `blueskyDid` de demo a `demo@apice.local`; si lo borras, el
 > reproductor devuelve 403.
