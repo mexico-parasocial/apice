@@ -53,14 +53,30 @@ export const registerCourseAtprotoRef = CatchAsyncError(
 
       const { courseUri, courseCid, lessonRefs } = parsed.data;
 
-      await prisma.course.update({
-        where: { id: courseId },
-        data: {
-          atprotoUri: courseUri,
-          atprotoCid: courseCid,
-          atprotoLessonRefs: lessonRefs,
-        },
-      });
+      await prisma.$transaction([
+        prisma.course.update({
+          where: { id: courseId },
+          data: {
+            atprotoUri: courseUri,
+            atprotoCid: courseCid,
+          },
+        }),
+        // Upsert each lesson ref — delete removed ones, create new ones
+        ...Object.entries(lessonRefs).map(([lessonId, ref]) =>
+          prisma.lessonRef.upsert({
+            where: { courseId_lessonId: { courseId, lessonId } },
+            update: { uri: ref.uri, cid: ref.cid },
+            create: { courseId, lessonId, uri: ref.uri, cid: ref.cid },
+          })
+        ),
+        // Remove refs for lessons no longer in the map
+        prisma.lessonRef.deleteMany({
+          where: {
+            courseId,
+            lessonId: { notIn: Object.keys(lessonRefs) },
+          },
+        }),
+      ]);
 
       res.status(200).json({
         success: true,

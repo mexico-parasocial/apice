@@ -43,23 +43,13 @@ export async function syncCourseContent(
     }
   }
 
-  // Drop the ATProto refs of deleted lessons. atprotoLessonRefs is the
-  // lessonId → {uri, cid} map credential publishing reads; a dangling key
-  // is silently skipped there, so without this cleanup a re-added lesson
-  // with a new id would never get its credential published.
+  // Drop the ATProto refs of deleted lessons. A dangling key is silently
+  // skipped in credential publishing, so without this cleanup a re-added
+  // lesson with a new id would never get its credential published.
   if (deletedLessonIds.length > 0) {
-    const course = await client.course.findUnique({
-      where: { id: courseId },
-      select: { atprotoLessonRefs: true },
+    await client.lessonRef.deleteMany({
+      where: { courseId, lessonId: { in: deletedLessonIds } },
     });
-    const refs = course?.atprotoLessonRefs as Record<string, unknown> | null;
-    if (refs && deletedLessonIds.some((id) => id in refs)) {
-      for (const id of deletedLessonIds) delete refs[id];
-      await client.course.update({
-        where: { id: courseId },
-        data: { atprotoLessonRefs: refs as any },
-      });
-    }
   }
 
   // Group incoming lessons by section title, preserving order.

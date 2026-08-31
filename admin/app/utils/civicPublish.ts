@@ -13,7 +13,7 @@ import Cookies from "js-cookie";
  * Differences from the server-side service-account flow:
  * - lessons without a video produce NO app.civic.video record (the lexicon
  *   requires sources.minLength=1) and no videoRef on the lesson;
- * - lesson URI map is returned so Ápice can store it (atprotoLessonRefs) for
+ * - lesson URI map is returned so Ápice can store it (LessonRef table) for
  *   the credential writer.
  */
 

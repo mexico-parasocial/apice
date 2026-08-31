@@ -40,7 +40,7 @@ function mockHappyPath() {
   (prisma.course.findUnique as any).mockResolvedValue({
     atprotoUri: COURSE_URI,
     atprotoCid: COURSE_CID,
-    atprotoLessonRefs: { "lesson-1": { uri: LESSON_URI, cid: LESSON_CID } },
+    lessonRefs: [{ lessonId: "lesson-1", uri: LESSON_URI, cid: LESSON_CID }],
   });
   (restoreSession as any).mockResolvedValue({ sub: DID });
 }
@@ -109,7 +109,7 @@ describe("credentials.service", () => {
     (prisma.course.findUnique as any).mockResolvedValue({
       atprotoUri: null,
       atprotoCid: null,
-      atprotoLessonRefs: null,
+      lessonRefs: [],
     });
 
     const ok = await publishLessonCredential("user-1", "course-1", "lesson-1");
@@ -123,7 +123,7 @@ describe("credentials.service", () => {
     (prisma.course.findUnique as any).mockResolvedValue({
       atprotoUri: COURSE_URI,
       atprotoCid: COURSE_CID,
-      atprotoLessonRefs: {},
+      lessonRefs: [],
     });
     (restoreSession as any).mockRejectedValue(new Error("no session"));
 
@@ -138,7 +138,7 @@ describe("credentials.service", () => {
     (prisma.course.findUnique as any).mockResolvedValue({
       atprotoUri: COURSE_URI,
       atprotoCid: COURSE_CID,
-      atprotoLessonRefs: {},
+      lessonRefs: [],
     });
     (restoreSession as any).mockResolvedValue({ sub: "did:plc:someone-else" });
 
@@ -153,7 +153,7 @@ describe("credentials.service", () => {
     (prisma.course.findUnique as any).mockResolvedValue({
       atprotoUri: COURSE_URI,
       atprotoCid: COURSE_CID,
-      atprotoLessonRefs: {},
+      lessonRefs: [],
     });
     (restoreSession as any).mockResolvedValue({ sub: DID });
 

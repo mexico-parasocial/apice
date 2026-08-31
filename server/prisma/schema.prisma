@@ -64,7 +64,6 @@ model Course {
   prerequisites  Json[]
   atprotoUri     String?
   atprotoCid     String?
-  atprotoLessonRefs Json? // map: lessonId -> { uri, cid }
   ratings        Float           @default(0)
   purchased      Int             @default(0)
   createdAt      DateTime        @default(now())
@@ -74,6 +73,7 @@ model Course {
   enrollments    Enrollment[]
   orders         Order[]
   videoViews     VideoView[]
+  lessonRefs     LessonRef[]
 
   @@index([categories])
   @@index([level])
@@ -113,6 +113,19 @@ model CourseLesson {
   videoViews       VideoView[]
 
   @@index([sectionId])
+}
+
+model LessonRef {
+  id       String  @id @default(uuid())
+  courseId String
+  course   Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonId String
+  uri      String  // at:// URI of the lesson record on the instructor's PDS
+  cid      String  // CID of the lesson record
+
+  @@unique([courseId, lessonId])
+  @@index([courseId])
+  @@index([lessonId])
 }
 
 model VideoView {

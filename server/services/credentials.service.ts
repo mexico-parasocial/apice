@@ -37,7 +37,7 @@ interface PublishContext {
   course: {
     atprotoUri: string;
     atprotoCid: string;
-    atprotoLessonRefs: Record<string, LessonRef> | null;
+    lessonRefs: Record<string, LessonRef> | null;
   };
 }
 
@@ -56,7 +56,9 @@ async function loadPublishContext(
     select: {
       atprotoUri: true,
       atprotoCid: true,
-      atprotoLessonRefs: true,
+      lessonRefs: {
+        select: { lessonId: true, uri: true, cid: true },
+      },
     },
   });
   if (!course?.atprotoUri || !course.atprotoCid) return null;
@@ -77,8 +79,12 @@ async function loadPublishContext(
     course: {
       atprotoUri: course.atprotoUri,
       atprotoCid: course.atprotoCid,
-      atprotoLessonRefs:
-        (course.atprotoLessonRefs as Record<string, LessonRef> | null) ?? null,
+      lessonRefs:
+        course.lessonRefs.length > 0
+          ? Object.fromEntries(
+              course.lessonRefs.map((r) => [r.lessonId, { uri: r.uri, cid: r.cid }])
+            )
+          : null,
     },
   };
 }
@@ -94,7 +100,7 @@ export async function publishLessonCredential(
     const ctx = preloaded ?? (await loadPublishContext(userId, courseId));
     if (!ctx) return false;
 
-    const lessonRef = ctx.course.atprotoLessonRefs?.[lessonId];
+    const lessonRef = ctx.course.lessonRefs?.[lessonId];
     if (!lessonRef) return false;
 
     const courseRef = {
