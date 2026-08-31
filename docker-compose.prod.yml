@@ -331,6 +331,23 @@ services:
     networks:
       - apice
 
+  # --------------------------------------------------------------------------
+  # Uptime monitoring — self-hosted Uptime Kuma hitting /ready + /metrics.
+  # Access at http://localhost:3001 on first run to configure alerts.
+  # --------------------------------------------------------------------------
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: apice-uptime-kuma
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    volumes:
+      - uptime_kuma_data:/app/data
+    ports:
+      - "127.0.0.1:3001:3001"
+    networks:
+      - apice
+
   backups:
     image: postgres:16-alpine
     container_name: apice-backups
@@ -366,6 +383,7 @@ volumes:
   streamplace_data:
   caddy_data:
   caddy_config:
+  uptime_kuma_data:
 
 networks:
   apice:

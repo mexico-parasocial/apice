@@ -51,28 +51,38 @@ step.
 From the repo root:
 
 ```bash
-cd /Users/mlv/Desktop/Ápice
 pnpm install
 cp packages/mobile-app/.env.example packages/mobile-app/.env
 ```
 
 Edit `.env` if your server is not on `http://127.0.0.1:8000`.
 
+### iOS: pod install after pnpm install
+
+CocoaPods must be re-installed after every `pnpm install` (Expo's
+`postinstall` does not always trigger it). Run this once after install and
+again any time you add or update a native dependency:
+
+```bash
+cd packages/mobile-app/ios && pod install && cd ../..
+```
+
+If you skip this step, `expo run:ios` or `xcodebuild` will fail with missing
+pod errors.
+
 ## Run
 
 ```bash
-cd packages/mobile-app
-pnpm expo start
+pnpm web            # Expo web on http://localhost:8081
+pnpm ios            # iOS simulator (runs pod install automatically)
+pnpm android        # Android emulator
 ```
 
-Then press `i` for iOS simulator or `a` for Android emulator.
-
-For a native development build:
+Alternatively, from the mobile-app directory:
 
 ```bash
-pnpm expo run:ios
-# or
-pnpm expo run:android
+cd packages/mobile-app
+pnpm expo start     # then press i (iOS) or a (Android)
 ```
 
 ## Features

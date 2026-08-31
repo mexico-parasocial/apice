@@ -29,7 +29,23 @@ pnpm dev:server
 # 5. Run the admin panel / mobile web
 pnpm dev:admin
 pnpm web
+
+# 6. Run native mobile (requires macOS for iOS)
+pnpm ios             # iOS simulator — runs pod install automatically
+pnpm android         # Android emulator
 ```
+
+### iOS native builds
+
+After `pnpm install`, CocoaPods must be run once before the first native build:
+
+```bash
+cd packages/mobile-app/ios && pod install && cd ../..
+```
+
+Re-run this any time you add or update a native dependency. See
+`packages/mobile-app/README.md` for details on the Expo patches that make the
+iOS build work.
 
 `make doctor` checks the running stack (API probes, Postgres, Redis,
 SeaweedFS, Streamplace) and prints pass/fail per service.
@@ -80,5 +96,4 @@ Security: **do not open a public issue** — see [SECURITY.md](SECURITY.md).
 
 ## Licence
 
-TBD — a LICENCE file will be added before public launch. Until then, all
-rights reserved.
+Ápice is licensed under the [GNU General Public License v3.0](LICENSE).

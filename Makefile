@@ -2,7 +2,7 @@
 # Ápice Monorepo Makefile (Inspired by bluesky-social/atproto)
 # ==============================================================================
 
-.PHONY: run-dev-env dev dev-server dev-admin dev-web down test typecheck doctor prod-doctor clean
+.PHONY: run-dev-env dev dev-server dev-admin dev-web down test typecheck doctor prod-doctor clean monitoring-up
 
 # Boot infrastructure (Postgres + Redis), run migrations & check health
 run-dev-env:
@@ -39,3 +39,11 @@ down:
 # Full clean reset: stop containers and clean node_modules build artifacts
 clean: down
 	rm -rf node_modules/.cache server/build packages/mobile-app/.expo admin/.next
+
+# Start Uptime Kuma monitoring UI (http://localhost:3001)
+monitoring-up:
+	docker compose -f docker-compose.prod.yml --profile monitoring up -d uptime-kuma
+
+# One-shot health check (API /ready + /metrics + Docker unhealthy containers)
+health-check:
+	@./scripts/health-check.sh

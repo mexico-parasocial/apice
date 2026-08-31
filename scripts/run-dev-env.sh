@@ -16,9 +16,11 @@ if [ ! -f "server/.env" ]; then
   cp server/.env.example server/.env
 fi
 
-# 2. Cleanup stale containers & networks (Conflict Prevention)
-echo "🧹 Checking for stale containers..."
-docker compose down --remove-orphans > /dev/null 2>&1 || true
+# 2. Cleanup stale infrastructure containers (Conflict Prevention)
+#    Only removes Postgres & Redis — leaves server/indexer/admin untouched so
+#    parallel dev processes are not killed.
+echo "🧹 Checking for stale infrastructure containers..."
+docker compose rm -fs postgres redis > /dev/null 2>&1 || true
 
 # 3. Boot infrastructure services (Postgres & Redis)
 echo "🐳 Starting Postgres and Redis via Docker Compose..."
