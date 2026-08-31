@@ -27,3 +27,6 @@ android/app/build/
 npm-debug.*
 yarn-error.log
 coverage/
+
+# ── Internal agent/session notes ─────────────────────────────
+.zcode/
