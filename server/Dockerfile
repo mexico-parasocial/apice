@@ -19,6 +19,9 @@ COPY packages/mobile/package.json ./packages/mobile/
 COPY packages/mobile-app/package.json ./packages/mobile-app/
 
 RUN pnpm install --frozen-lockfile
+# Deterministic lexicons compile (workspace lifecycle scripts don't always
+# re-run on cached installs).
+RUN pnpm --filter @apice/lexicons run postinstall
 
 # Runtime workspace source the server imports (installed as a symlink to
 # packages/lexicons — without the source, both tsc and require() fail).
