@@ -17,7 +17,7 @@
   "scripts": {
     "codegen": "npx lex gen-ts-obj ../../lexicons/*.json > ./src/lexicons.ts && node -e \"let s=require('fs').readFileSync('./src/lexicons.ts','utf8').trimEnd(); if(s.endsWith(']')) s=s.slice(0,-1)+'] as const\\n\\nexport type CivicLexiconId = typeof lexicons[number][\\'id\\'];\\n'; require('fs').writeFileSync('./src/lexicons.ts',s)\"",
     "typecheck": "tsc --noEmit",
-    "postinstall": "tsc -p tsconfig.json"
+    "postinstall": "node build.js"
   },
   "devDependencies": {
     "@atproto/lexicon": "^0.4.9",
