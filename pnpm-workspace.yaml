@@ -21,9 +21,11 @@ allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
   '@sentry/cli': true
+  bufferutil: false
   core-js: true
   prisma: true
   unrs-resolver: true
+  utf-8-validate: false
 
 # Declining these on purpose (see note above) — without this list pnpm 11
 # fails non-interactive installs with ERR_PNPM_IGNORED_BUILDS.
