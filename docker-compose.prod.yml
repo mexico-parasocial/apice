@@ -228,7 +228,7 @@ services:
       streamplace-node:
         condition: service_started
     env_file:
-      - server/.env
+      - server/.env.production
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-apice}:${POSTGRES_PASSWORD:-change-me-postgres}@postgres:5432/${POSTGRES_DB:-apice_prod}?schema=public
       REDIS_URL: redis://redis:6379
@@ -260,7 +260,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - server/.env
+      - server/.env.production
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-apice}:${POSTGRES_PASSWORD:-change-me-postgres}@postgres:5432/${POSTGRES_DB:-apice_prod}?schema=public
       REDIS_URL: redis://redis:6379
@@ -272,10 +272,14 @@ services:
     build:
       context: .
       dockerfile: admin/Dockerfile
+      args:
+        NEXT_PUBLIC_SERVER_URI: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}/api/v1
+        NEXT_PUBLIC_SOCKET_SERVER_URI: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
     container_name: apice-admin
     restart: unless-stopped
     env_file:
-      - admin/.env
+      - admin/.env.production
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
     networks:
@@ -356,7 +360,7 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - server/.env
+      - server/.env.production
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-apice}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres}

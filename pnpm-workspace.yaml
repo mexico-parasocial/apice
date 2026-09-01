@@ -6,25 +6,26 @@ packages:
 overrides:
   '@types/react': '^18.3.31'
 
+# bufferutil / utf-8-validate are deliberately NOT built: they're optional
+# WebSocket accelerators with pure-JS fallbacks, and their node-gyp build
+# needs a C++ toolchain the alpine deploy images don't carry.
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
   - '@sentry/cli'
-  - 'bufferutil'
   - 'core-js'
   - 'prisma'
   - 'unrs-resolver'
-  - 'utf-8-validate'
 
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
   '@sentry/cli': true
-  bufferutil: true
+  bufferutil: set this to true or false
   core-js: true
   prisma: true
   unrs-resolver: true
-  utf-8-validate: true
+  utf-8-validate: set this to true or false
 
 patchedDependencies:
   expo-modules-autolinking@2.0.8: patches/expo-modules-autolinking@2.0.8.patch
