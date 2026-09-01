@@ -7,6 +7,7 @@ RUN corepack enable && corepack prepare pnpm@11.7.0 --activate
 
 # Copy workspace configuration so pnpm can resolve the monorepo lockfile.
 COPY package.json pnpm-workspace.yaml .npmrc pnpm-lock.yaml ./
+COPY patches ./patches
 COPY server/package.json ./server/
 COPY admin/package.json ./admin/
 COPY packages/lexicons/package.json ./packages/lexicons/
