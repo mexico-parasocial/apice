@@ -27,8 +27,8 @@ SELECT
   gen_random_uuid()::text,
   c."id",
   key AS "lessonId",
-  (value ->> 'uri') AS "uri",
-  (value ->> 'cid') AS "cid"
+  (value::jsonb ->> 'uri') AS "uri",
+  (value::jsonb ->> 'cid') AS "cid"
 FROM "Course" c,
 LATERAL jsonb_each_text(c."atprotoLessonRefs"::jsonb) AS refs(key, value)
 WHERE c."atprotoLessonRefs" IS NOT NULL
