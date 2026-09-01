@@ -9,6 +9,10 @@ RUN corepack enable && corepack prepare pnpm@11.7.0 --activate
 COPY package.json pnpm-workspace.yaml .npmrc pnpm-lock.yaml ./
 COPY patches ./patches
 COPY server/package.json ./server/
+# prisma generate is the server's postinstall — the schema must exist before
+# install, or the container build dies looking for it (CI installs from a
+# full checkout and never sees this).
+COPY server/prisma ./server/prisma
 COPY admin/package.json ./admin/
 COPY packages/lexicons/package.json ./packages/lexicons/
 COPY packages/mobile/package.json ./packages/mobile/
@@ -16,7 +20,6 @@ COPY packages/mobile-app/package.json ./packages/mobile-app/
 
 RUN pnpm install --frozen-lockfile
 
-COPY server/prisma ./server/prisma
 COPY server/. ./server/
 
 RUN pnpm --filter server exec prisma generate
