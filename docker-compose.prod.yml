@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: apice-postgres
+    container_name: apice-prod-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-apice}
@@ -20,7 +20,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: apice-redis
+    container_name: apice-prod-redis
     restart: unless-stopped
     volumes:
       - apice_redis_data:/data
@@ -37,7 +37,7 @@ services:
   # --------------------------------------------------------------------------
   seaweed-master:
     image: chrislusf/seaweedfs:4.42
-    container_name: apice-seaweed-master
+    container_name: apice-prod-seaweed-master
     restart: unless-stopped
     command: >
       master
@@ -54,7 +54,7 @@ services:
 
   seaweed-volume:
     image: chrislusf/seaweedfs:4.42
-    container_name: apice-seaweed-volume
+    container_name: apice-prod-seaweed-volume
     restart: unless-stopped
     command: >
       volume
@@ -73,7 +73,7 @@ services:
 
   seaweed-filer-init:
     image: postgres:16-alpine
-    container_name: apice-seaweed-filer-init
+    container_name: apice-prod-seaweed-filer-init
     restart: "no"
     environment:
       SEAWEED_FILER_POSTGRES_HOST: ${SEAWEED_FILER_POSTGRES_HOST:-postgres}
@@ -92,7 +92,7 @@ services:
 
   seaweed-filer:
     image: chrislusf/seaweedfs:4.42
-    container_name: apice-seaweed-filer
+    container_name: apice-prod-seaweed-filer
     restart: unless-stopped
     environment:
       SEAWEED_FILER_POSTGRES_HOST: ${SEAWEED_FILER_POSTGRES_HOST:-postgres}
@@ -122,7 +122,7 @@ services:
 
   seaweed-s3:
     image: chrislusf/seaweedfs:4.42
-    container_name: apice-seaweed-s3
+    container_name: apice-prod-seaweed-s3
     restart: unless-stopped
     environment:
       SEAWEED_ACCESS_KEY: ${SEAWEED_ACCESS_KEY:-change-me-access-key}
@@ -145,7 +145,7 @@ services:
 
   seaweed-create-buckets:
     image: minio/mc:latest
-    container_name: apice-seaweed-create-buckets
+    container_name: apice-prod-seaweed-create-buckets
     restart: "no"
     environment:
       SEAWEED_S3_ENDPOINT: ${SEAWEED_S3_ENDPOINT:-http://seaweed-s3:8333}
@@ -178,7 +178,7 @@ services:
         # Package file ID from the Streamplace package registry.
         # 786 = streamplace-v0.11.13-linux-amd64 (see streamplace/Dockerfile).
         STREAMPLACE_PACKAGE_FILE_ID: ${STREAMPLACE_PACKAGE_FILE_ID:-786}
-    container_name: apice-streamplace-node
+    container_name: apice-prod-streamplace-node
     restart: unless-stopped
     environment:
       SP_BROADCASTER_HOST: ${STREAMPLACE_PUBLIC_HOST:-vod.apice.example.com}
@@ -216,7 +216,7 @@ services:
     build:
       context: .
       dockerfile: server/Dockerfile
-    container_name: apice-server
+    container_name: apice-prod-server
     restart: unless-stopped
     depends_on:
       postgres:
@@ -251,7 +251,7 @@ services:
     build:
       context: .
       dockerfile: server/Dockerfile
-    container_name: apice-indexer
+    container_name: apice-prod-indexer
     restart: unless-stopped
     command: node build/workers/jetstreamIndexer.js
     depends_on:
@@ -276,7 +276,7 @@ services:
         NEXT_PUBLIC_SERVER_URI: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}/api/v1
         NEXT_PUBLIC_SOCKET_SERVER_URI: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
-    container_name: apice-admin
+    container_name: apice-prod-admin
     restart: unless-stopped
     env_file:
       - admin/.env.production
@@ -287,7 +287,7 @@ services:
 
   caddy:
     image: caddy:2-alpine
-    container_name: apice-caddy
+    container_name: apice-prod-caddy
     restart: unless-stopped
     profiles:
       # Only needed when exposing the origin directly (no Cloudflare Tunnel).
@@ -321,7 +321,7 @@ services:
   # Token comes from: cloudflared tunnel token <tunnel-name>
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: apice-cloudflared
+    container_name: apice-prod-cloudflared
     restart: unless-stopped
     profiles:
       # Enable explicitly: docker compose -f docker-compose.prod.yml --profile tunnel up -d
@@ -341,7 +341,7 @@ services:
   # --------------------------------------------------------------------------
   uptime-kuma:
     image: louislam/uptime-kuma:1
-    container_name: apice-uptime-kuma
+    container_name: apice-prod-uptime-kuma
     restart: unless-stopped
     profiles:
       - monitoring
@@ -354,7 +354,7 @@ services:
 
   backups:
     image: postgres:16-alpine
-    container_name: apice-backups
+    container_name: apice-prod-backups
     restart: unless-stopped
     depends_on:
       postgres:
