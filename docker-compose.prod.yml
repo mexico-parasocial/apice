@@ -255,7 +255,7 @@ services:
       dockerfile: server/Dockerfile
     container_name: apice-prod-indexer
     restart: unless-stopped
-    command: node build/workers/jetstreamIndexer.js
+    command: node server/build/workers/jetstreamIndexer.js
     depends_on:
       postgres:
         condition: service_healthy
