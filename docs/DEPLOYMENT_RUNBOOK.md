@@ -84,3 +84,28 @@ El server corre `prisma migrate deploy` al arrancar (schema al día).
   A/AAAA a la IP de la máquina). No usar junto con el tunnel.
 - **Uptime**: la máquina local es el punto único de fallo — VPS cuando el
   tráfico lo justifique (ver `docs/PRODUCTION_CHECKLIST.md`).
+
+---
+
+## Deploy checkout (~/apice-prod)
+
+Deploys run from a clean checkout at an **ASCII-only path** (e.g. `~/apice-prod`).
+Two reasons: Docker Compose's bake build fails on non-ASCII project paths
+(gRPC header error), and deploys should never run from the live working tree.
+
+```bash
+# sync (keeps .env* files already in the deploy dir)
+rsync -a --delete \
+  --exclude node_modules --exclude .git --exclude .zcode \
+  --exclude server/build --exclude admin/.next \
+  --exclude packages/mobile-app/dist --exclude packages/mobile-app/ios \
+  --exclude .expo \
+  "/Users/mlv/Desktop/Home/Ápice/" /Users/mlv/apice-prod/
+
+cd /Users/mlv/apice-prod
+docker compose up -d --build     # COMPOSE_FILE is pinned in .env
+./scripts/doctor.sh              # expect 12/12
+```
+
+First boot only: migrations + seeds run via the container
+(`docker compose exec server sh -c "cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/seed-courses.ts"`).
