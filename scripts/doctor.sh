@@ -76,7 +76,8 @@ check_container seaweed-master
   && ok "seaweed-master cluster status OK" || bad "seaweed-master cluster status FAILED"
 
 check_container streamplace-node
-"${COMPOSE[@]}" exec -T streamplace-node wget -q -O /dev/null http://localhost:38080/ 2>/dev/null \
+# the streamplace image ships curl, not wget
+"${COMPOSE[@]}" exec -T streamplace-node curl -sf http://localhost:38080/ >/dev/null 2>&1 \
   && ok "streamplace-node responds" || bad "streamplace-node NOT responding"
 
 head "Summary ($PREFIX)"
