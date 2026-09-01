@@ -95,7 +95,10 @@ Two reasons: Docker Compose's bake build fails on non-ASCII project paths
 
 ```bash
 # sync (keeps .env* files already in the deploy dir)
+# NOTE: --exclude .env — the deploy dir keeps its own .env (secrets +
+# COMPOSE_FILE=docker-compose.prod.yml); never overwrite it from dev.
 rsync -a --delete \
+  --exclude .env \
   --exclude node_modules --exclude .git --exclude .zcode \
   --exclude server/build --exclude admin/.next \
   --exclude packages/mobile-app/dist --exclude packages/mobile-app/ios \
