@@ -17,11 +17,11 @@ PROD=0
 
 if [[ $PROD -eq 1 ]]; then
   COMPOSE=(docker compose -f docker-compose.prod.yml)
-  API_CONTAINER="apice-server"
+  API_CONTAINER="server"
   PREFIX="prod"
 else
   COMPOSE=(docker compose)
-  API_CONTAINER="apice-server"
+  API_CONTAINER="server"
   PREFIX="dev"
 fi
 

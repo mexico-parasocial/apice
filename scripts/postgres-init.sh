@@ -6,7 +6,7 @@
 # and the streamplace/filer databases never existed.
 set -e
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<-EOSQL
 SELECT 'CREATE DATABASE apice_streamplace'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'apice_streamplace')\gexec
 SELECT 'CREATE DATABASE apice_filer'
