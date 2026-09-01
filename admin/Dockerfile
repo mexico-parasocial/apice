@@ -30,6 +30,10 @@ RUN pnpm --filter admin build
 FROM node:22-alpine
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.7.0 --activate
+# The copied node_modules don't match /app/package.json (it's the admin
+# package in a workspace layout); without this, pnpm 11 runs a full
+# install at startup before `next start` ever binds.
+ENV npm_config_verify_deps_before_run=false
 
 COPY --from=builder /app/admin/.next ./.next
 COPY --from=builder /app/admin/package.json ./package.json
