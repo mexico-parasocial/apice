@@ -43,4 +43,6 @@ COPY --from=builder /app/admin/next.config.* ./
 
 EXPOSE 3000
 
-CMD ["pnpm", "next", "start", "-p", "3000"]
+# Invoke next directly: going through pnpm triggers verify-deps-before-run,
+# which full-installs at container startup before the server ever binds.
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "3000"]
