@@ -1,0 +1,15 @@
+# Never bake environment files into images — compose reads them host-side,
+# but dotenv inside the container would inject dev values into prod.
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+# Build-context noise
+.git
+.zcode
+**/node_modules
+**/build
+**/.next
+**/dist
+**/.expo
