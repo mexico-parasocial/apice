@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-apice_prod}
     volumes:
       - apice_postgres_data:/var/lib/postgresql/data
-      - ./scripts/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./scripts/postgres-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apice} -d ${POSTGRES_DB:-apice_prod}"]
       interval: 5s
