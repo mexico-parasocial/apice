@@ -20,6 +20,9 @@ COPY packages/mobile-app/package.json ./packages/mobile-app/
 
 RUN pnpm install --frozen-lockfile
 
+# Runtime workspace source the server imports (installed as a symlink to
+# packages/lexicons — without the source, both tsc and require() fail).
+COPY packages/lexicons ./packages/lexicons
 COPY server/. ./server/
 
 RUN pnpm --filter server exec prisma generate
