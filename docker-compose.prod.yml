@@ -201,7 +201,7 @@ services:
       SP_WIDE_OPEN: ${STREAMPLACE_WIDE_OPEN:-false}
       SP_ALLOWED_STREAMS: ${STREAMPLACE_ALLOWED_STREAMS:-}
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:38080/"]
+      test: ["CMD", "curl", "-f", "http://localhost:38080/"]
       interval: 10s
       timeout: 5s
       retries: 10
