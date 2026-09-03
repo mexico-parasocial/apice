@@ -145,7 +145,7 @@ We probed Streamplace's VOD playback chain end-to-end.
 2. **Identity is required** — the caller must be authenticated and must have a linked Bluesky DID (`User.blueskyDid`). This DID comes from the existing iM8 / Bluesky OAuth flow, so it is a real, verifiable identity rather than a throwaway email/password account.
 3. **Every playback is logged** — a new `VideoView` row records `userId`, `lessonId`, `courseId`, `provider`, `playbackUrl`, `ip`, `userAgent`, and `createdAt`.
 4. **Cooldown** — duplicate `VideoView` rows are suppressed for the same user+lesson within a 60-second window, so normal player retries don't spam the table while bots that hammer the endpoint still stand out.
-5. **Streamplace as the default provider** — the backend resolves `at://` references through `stream.place` and returns the HLS playlist URL. The mobile player uses `expo-video` to play it natively.
+5. **Streamplace as the default provider** — the backend resolves `at://` references through `stream.place` and returns the HLS playlist URL. The mobile player uses `@bsky.app/video` to play it natively.
 
 ### Backend changes
 
@@ -160,13 +160,13 @@ We probed Streamplace's VOD playback chain end-to-end.
 
 ### Mobile changes
 
-- `packages/mobile/src/components/VideoPlayer.tsx` — `expo-video` wrapper with HLS detection.
+- `packages/mobile/src/components/VideoPlayer.tsx` — `@bsky.app/video` wrapper with HLS detection.
 - `packages/mobile-app/src/screens/LessonPlayerScreen.tsx` — renders the player, shows an explicit error when Bluesky identity is missing, and surfaces the verified identity pill.
 
 ### Pending
 
 - Apply the Prisma migration (`npx prisma migrate dev --name add_video_views`) once the PostgreSQL container is running.
-- Prebuild / pod-install the mobile app so the `expo-video` native module is linked.
+- ~~Prebuild / pod-install the mobile app so the `expo-video` native module is linked.~~ (2026-09-01: expo-video removed entirely; the player is `@bsky.app/video`.)
 
 ## Watch item: MoQ transport — `atmoq` (2026-08-31)
 

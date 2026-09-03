@@ -30,3 +30,11 @@ coverage/
 
 # ── Internal agent/session notes ─────────────────────────────
 .zcode/
+
+# Lesson clips live on disk and on the Streamplace node — never in git.
+server/fixtures/videos/*.mp4
+!server/fixtures/videos/TESTCLIP.MP4
+
+# Course source material stays local — it lives on disk and gets cut into
+# lesson clips; clips live on the Streamplace node. Git never carries video.
+assets/

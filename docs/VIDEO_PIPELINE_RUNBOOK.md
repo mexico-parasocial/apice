@@ -24,7 +24,7 @@ This document describes how to prove and operate the end-to-end Ápice video pip
            │ verifies auth + Bluesky DID, audits view
            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Mobile app (expo-video) receives HLS playlist URL            │
+│  Mobile app (@bsky.app/video) receives HLS playlist URL       │
 │  and streams segments directly from Streamplace/SeaweedFS     │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -157,7 +157,7 @@ Expected response:
 ### Step 4 — Verify mobile playback
 
 1. Open the lesson in the mobile app.
-2. The player should call the playback endpoint, receive the HLS URL, and pass it to `expo-video` with `contentType: "hls"`.
+2. The player should call the playback endpoint, receive the HLS URL, and pass it to `@bsky.app/video` (`BlueskyVideoView url=...`).
 3. The video should play; segments are served directly by Streamplace/SeaweedFS.
 
 ---

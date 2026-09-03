@@ -226,6 +226,8 @@ services:
       # host connector (cloudflared service) reaches the stack via loopback;
       # 8010/3010/3810 leave 8000/3000 to the dev stack on this machine.
       - "127.0.0.1:8010:8000"
+      # OAuth loopback consent redirect for the publish CLI
+      - "127.0.0.1:4321:4321"
     depends_on:
       postgres:
         condition: service_healthy
@@ -284,6 +286,9 @@ services:
         NEXT_PUBLIC_SERVER_URI: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}/api/v1
         NEXT_PUBLIC_SOCKET_SERVER_URI: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
+        NEXT_PUBLIC_STREAMPLACE_NODE_URL: ${NEXT_PUBLIC_STREAMPLACE_NODE_URL:-https://vod.apice.example.com}
+        NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://admin.apice.example.com}
+        ADMIN_BASE_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://admin.apice.example.com}
     container_name: apice-prod-admin
     restart: unless-stopped
     ports:
@@ -292,6 +297,9 @@ services:
       - admin/.env.production
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
+      # OAuth client-metadata route reads this at request time.
+      NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://admin.apice.example.com}
+      ADMIN_BASE_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://admin.apice.example.com}
     networks:
       - apice
 

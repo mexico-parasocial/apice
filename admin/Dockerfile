@@ -35,14 +35,28 @@ RUN corepack enable && corepack prepare pnpm@11.7.0 --activate
 # install at startup before `next start` ever binds.
 ENV npm_config_verify_deps_before_run=false
 
-COPY --from=builder /app/admin/.next ./.next
-COPY --from=builder /app/admin/package.json ./package.json
-COPY --from=builder /app/admin/public ./public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/admin/next.config.* ./
+# Standalone output (monorepo layout): traces nest the app as admin/.
+COPY --from=builder /app/admin/.next/standalone ./
+COPY --from=builder /app/admin/.next/static ./admin/.next/static
+COPY --from=builder /app/admin/public ./admin/public
+
+# The OAuth client-metadata is served as a STATIC file: Next's internal
+# worker routing rewrites the Host header (127.0.0.1:<ipc-port>), which a
+# route handler would bake into the client_id. ARG it in instead.
+ARG ADMIN_BASE_URL
+RUN mkdir -p ./api/oauth && \
+    printf '{\n  "client_id": "%s/api/oauth/client-metadata",\n  "client_name": "Ápice Admin",\n  "client_uri": "%s",\n  "redirect_uris": ["%s/oauth/callback"],\n  "scope": "atproto transition:generic",\n  "response_types": ["code"],\n  "grant_types": ["authorization_code", "refresh_token"],\n  "token_endpoint_auth_method": "none",\n  "application_type": "web",\n  "dpop_bound_access_tokens": true\n}\n' \
+      "$ADMIN_BASE_URL" "$ADMIN_BASE_URL" "$ADMIN_BASE_URL" > ./api/oauth/client-metadata.json
+
+# Documented standalone runtime trio: without NODE_ENV the render worker
+# dies, and without HOSTNAME the server binds the container hostname
+# instead of a reachable interface.
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
+
+WORKDIR /app/admin
 
 EXPOSE 3000
 
-# Invoke next directly: going through pnpm triggers verify-deps-before-run,
-# which full-installs at container startup before the server ever binds.
-CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "3000"]
+CMD ["node", "server.js"]
