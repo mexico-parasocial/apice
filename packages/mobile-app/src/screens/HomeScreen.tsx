@@ -119,9 +119,21 @@ export function HomeScreen() {
 
   const firstName = user?.name?.split(" ")[0];
 
+  // The continue card resumes the road directly — the learner already chose
+  // this programme. Discovery surfaces (optativos) go through the preview.
   const openCourse = React.useCallback(
     (course: { id: string; name: string }) => {
       navigation.navigate("CourseDetail", {
+        courseId: course.id,
+        courseName: course.name,
+      });
+    },
+    [navigation]
+  );
+
+  const previewCourse = React.useCallback(
+    (course: { id: string; name: string }) => {
+      navigation.navigate("CoursePreview", {
         courseId: course.id,
         courseName: course.name,
       });
@@ -201,7 +213,7 @@ export function HomeScreen() {
         // The continue card already anchors the top of the feed; a second
         // hero card for electives would compete with it.
         showFeatured={!continueEnrollment}
-        onSelectCourse={(course) => openCourse(course)}
+        onSelectCourse={(course) => previewCourse(course)}
       />
     </ContentContainer>
     ) : null;

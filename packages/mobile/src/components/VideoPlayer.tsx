@@ -88,6 +88,36 @@ function VideoPlayerInner({
   }
 
   const togglePlayback = () => videoRef.current?.togglePlayback();
+  const toggleMuted = () => videoRef.current?.toggleMuted();
+  const enterFullscreen = () => videoRef.current?.enterFullscreen(false);
+
+  // Brief center-icon pulse on tap-to-toggle, so the action registers even
+  // when the frame itself doesn't change much (talking-head shots do this).
+  const [tapFlash, setTapFlash] = useState<"play" | "pause" | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashToggle = React.useCallback(() => {
+    setTapFlash(isPlaying ? "pause" : "play");
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setTapFlash(null), 450);
+  }, [isPlaying]);
+
+  React.useEffect(
+    () => () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    },
+    []
+  );
+
+  // Playback position for the progress strip. The module only reports
+  // remaining time; the lesson's declared duration anchors the fraction.
+  const elapsedSeconds =
+    durationSeconds != null && timeRemaining != null
+      ? Math.max(0, Math.min(durationSeconds, durationSeconds - timeRemaining))
+      : null;
+  const progressPct =
+    durationSeconds && elapsedSeconds != null
+      ? Math.min(100, Math.round((elapsedSeconds / durationSeconds) * 100))
+      : 0;
 
   return (
     <View style={styles.container}>
@@ -140,8 +170,44 @@ function VideoPlayerInner({
 
       <KeepAwakeVideo isPlaying={isPlaying} />
 
+      {/* iOS: BlueskyVideoView has no tap gesture (onPlayerPress is
+          Android-only), so tap-to-pause/resume needs our own layer. */}
+      {hasStarted && (
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          onPress={() => {
+            togglePlayback();
+            flashToggle();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={isPlaying ? "Pausar video" : "Reproducir video"}
+        />
+      )}
+
       {timeRemaining !== null && hasStarted && (
         <TimeIndicator timeRemaining={timeRemaining} />
+      )}
+
+      {/* Progress strip: elapsed chip + fill bar. Sits left of the remaining
+          chip (absolute, bottom-right), all pointerEvents none so taps reach
+          the play/pause layer underneath. */}
+      {hasStarted && elapsedSeconds != null && (
+        <View style={styles.bottomControls} pointerEvents="none">
+          <View style={styles.timeChip}>
+            <Text style={styles.timeText}>{formatClock(elapsedSeconds)}</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+          </View>
+        </View>
+      )}
+
+      {tapFlash && (
+        <View style={styles.flashOverlay} pointerEvents="none">
+          <View style={styles.posterPlayCircle}>
+            <Ionicons name={tapFlash} size={30} color="#FFFFFF" />
+          </View>
+        </View>
       )}
 
       {description ? <AltBadgeWithDialog text={description} /> : null}
@@ -150,6 +216,21 @@ function VideoPlayerInner({
         <View style={styles.overlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#FFFFFF" />
         </View>
+      )}
+
+      {/* Paused mid-playback: the frozen frame alone gives no affordance, and
+          on light frames a bare icon would vanish — dim + circle, as poster. */}
+      {hasStarted && !isPlaying && (
+        <TouchableOpacity
+          style={styles.pausedOverlay}
+          onPress={togglePlayback}
+          accessibilityRole="button"
+          accessibilityLabel={`Reanudar ${title ?? "video"}`}
+        >
+          <View style={styles.posterPlayCircle}>
+            <Ionicons name="play" size={34} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
       )}
 
       {!hasStarted && (
@@ -170,6 +251,29 @@ function VideoPlayerInner({
           ) : null}
         </TouchableOpacity>
       )}
+
+      <View style={styles.topRightControls}>
+        <TouchableOpacity
+          style={styles.chipButton}
+          onPress={enterFullscreen}
+          accessibilityRole="button"
+          accessibilityLabel="Pantalla completa"
+        >
+          <Ionicons name="expand" size={15} color="#FFFFFF" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.chipButton}
+          onPress={toggleMuted}
+          accessibilityRole="button"
+          accessibilityLabel={muted ? "Activar sonido" : "Silenciar"}
+        >
+          <Ionicons
+            name={muted ? "volume-mute" : "volume-high"}
+            size={15}
+            color="#FFFFFF"
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -180,6 +284,12 @@ export function VideoPlayerSkeleton() {
       <ActivityIndicator size="large" color="#4A1052" />
     </View>
   );
+}
+
+function formatClock(totalSeconds: number) {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 const styles = StyleSheet.create({
@@ -196,6 +306,70 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    // White spinner needs a scrim to stay visible over light video frames.
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+  },
+  pausedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+  },
+  flashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.25)",
+  },
+  bottomControls: {
+    position: "absolute",
+    left: 10,
+    right: 72, // leaves room for the remaining-time chip (bottom-right)
+    bottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  timeChip: {
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  timeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontFamily: "Nunito_600SemiBold",
+    fontVariant: ["tabular-nums"],
+  },
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+  },
+  topRightControls: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    flexDirection: "row",
+    gap: 8,
+  },
+  chipButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    // Same chip recipe as TimeIndicator/ALT badge: white icon needs a dark
+    // backing to read against arbitrary video content.
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
     justifyContent: "center",
     alignItems: "center",
   },

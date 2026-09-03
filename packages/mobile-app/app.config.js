@@ -44,7 +44,8 @@ module.exports = {
         "expo-build-properties",
         {
           ios: {
-            // expo-video's podspec requires iOS 16.4+
+            // 16.4 was required by expo-video's podspec (since removed);
+            // BlueskyVideo only needs 13.4 — lower after device testing
             deploymentTarget: "16.4",
           },
         },

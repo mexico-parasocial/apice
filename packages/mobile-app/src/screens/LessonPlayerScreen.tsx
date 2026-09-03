@@ -115,7 +115,7 @@ export function LessonPlayerScreen() {
     (error as any)?.message?.includes("Bluesky identity");
 
   return (
-    <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["top"]}>
+    <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["bottom"]}>
       {isLoading ? (
         <VideoPlayerSkeleton />
       ) : error ? (

@@ -9,6 +9,7 @@ export const app = express();
 import cors from "cors";
 import helmet from "helmet";
 import path from "path";
+import fs from "fs";
 import cookieParser from "cookie-parser";
 import { ErrorMiddleware } from "./middleware/error";
 import userRouter from "./routes/user.route";
@@ -186,6 +187,12 @@ app.use("/api/v1/videos", videoRouter);
 // playable file without a Streamplace node. Same gate as DirectUrlProvider —
 // off unless ALLOW_DIRECT_VIDEO_URLS=true, so it never ships in production.
 if (process.env.ALLOW_DIRECT_VIDEO_URLS === "true") {
+  // fixtures live at server/fixtures; __dirname is server/ under ts-node-dev
+  // but server/build/ for the compiled app, so probe both layouts.
+  const demoMediaRoot =
+    [path.join(__dirname, "fixtures", "videos"), path.join(__dirname, "..", "fixtures", "videos")].find(
+      (dir) => fs.existsSync(dir)
+    ) ?? path.join(__dirname, "fixtures", "videos");
   app.use(
     "/demo-media",
     (req: Request, res: Response, next: NextFunction) => {
@@ -194,7 +201,7 @@ if (process.env.ALLOW_DIRECT_VIDEO_URLS === "true") {
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       next();
     },
-    express.static(path.join(__dirname, "..", "fixtures", "videos"), {
+    express.static(demoMediaRoot, {
       // Byte-range requests, so the browser can seek in the MP4.
       acceptRanges: true,
     })

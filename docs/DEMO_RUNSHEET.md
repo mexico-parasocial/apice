@@ -149,9 +149,8 @@ panel en `localhost:3000`.
 
 | Hueco | Qué se ve | Qué decir |
 |---|---|---|
-| **Video simulado** | La primera lección de cada curso reproduce un clip de 23 s (`TESTCLIP.MP4`) | El clip se sirve **localmente**, no desde Streamplace. El pipeline real está construido y probado (`stream.place` responde correctamente al XRPC de playback) pero **aún no se ha publicado ningún video al nodo**. En cuanto exista la cuenta y el AT URI, se cambia con un comando (§5) sin tocar código. |
-| **Duración no coincide** | La lección dice *4:00* pero el clip dura *0:23* | Es un clip de muestra; las duraciones son las del guion real del curso. |
-| **Resto de lecciones sin video** | *"URL de reproducción no disponible"* | Solo se conectó la primera lección de cada programa — el resto del contenido está en producción. |
+| **Video de prueba** | Las 14 lecciones reproducen clips reales servidos desde `/demo-media` (`lesson-01…14`, copiados de `assets/` — material de prueba de Linux, no coincide con el temario en español). `TESTCLIP.MP4` sigue disponible. | Los clips se sirven **localmente**, no desde Streamplace. El pipeline real está construido y probado (`stream.place` responde correctamente al XRPC de playback) pero **aún no se ha publicado ningún video al nodo**. En cuanto exista la cuenta y el AT URI, se cambia con un comando (§5) sin tocar código. |
+| **Duración no coincide** | La lección dice *4:00* pero los clips reales duran entre 3 y 12 min | Son clips de prueba; las duraciones son las del guion real del curso. |
 | **Analítica** | Gráficas de 12 meses con datos | Son **datos sembrados de demo**, no tráfico real. Dilo antes de que lo pregunten. |
 | **Admin en inglés** | Etiquetas *Users*, *Invoices*, *Create Program* | El panel viene de una plantilla; la marca ya es Ápice pero la traducción está pendiente. |
 | **Precio $199** | Un programa muestra precio | La inscripción es **gratuita por defecto** por decisión de producto; el precio es informativo. |
@@ -220,6 +219,7 @@ cd server && pnpm smoke:video "at://did:…/place.stream.video/…"
 
 | Síntoma | Arreglo |
 |---|---|
+| La app queda en blanco (Network Error) | Revisa `packages/mobile-app/.env`: en dev debe ser `EXPO_PUBLIC_API_URL=http://127.0.0.1:8000`. Tras cambiarlo, reinicia el bundler con `pnpm web -- --port 8082 --clear`. Si apunta al stack de prod (8010), `ALLOWED_ORIGINS` de `server/.env.production` (y del checkout de deploy `/Users/mlv/apice-prod`) debe incluir `http://localhost:8082` — y recrea el contenedor (`docker compose … up -d --no-build --no-deps --force-recreate server`), `docker restart` no relee el env. |
 | La app no carga cursos | Revisa que el server siga arriba: `curl localhost:8000/api/v1/get-courses`. Si cambió el puerto del bundler, añade el origen a `ALLOWED_ORIGINS` en `server/.env` y **reinicia el server** (no recarga solo). |
 | Pantalla en blanco en un curso | Recarga. Si persiste, salta a otro curso — el catálogo y el admin no dependen de esa pantalla. |
 | El progreso no sube | Vuelve a entrar al curso (la pantalla refresca al recuperar el foco). |

@@ -178,6 +178,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
+    // White spinner needs a scrim to stay visible over light video frames.
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
   },
   skeleton: {
     backgroundColor: "#F4F4F4",

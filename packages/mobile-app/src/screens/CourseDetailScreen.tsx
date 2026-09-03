@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ScrollView, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   useRoute,
@@ -82,7 +82,7 @@ export function CourseDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["top"]}>
+      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["bottom"]}>
         <LoadingState label="Cargando programa…" />
       </SafeAreaView>
     );
@@ -90,7 +90,7 @@ export function CourseDetailScreen() {
 
   if (error) {
     return (
-      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["top"]}>
+      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["bottom"]}>
         <ErrorState
           message={(error as any).message}
           onRetry={() => {
@@ -106,8 +106,10 @@ export function CourseDetailScreen() {
   const progress = progressData?.progress ?? 0;
 
   return (
-    <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["top"]}>
-      <ScrollView contentContainerStyle={a.pb_2xl}>
+    <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["bottom"]}>
+      {/* LessonRoad owns its own ScrollView — the course header stays pinned
+          above it, and the road SVG scrolls together with the lesson rows. */}
+      <View style={a.flex_1}>
         <ContentContainer>
         <View style={[a.px_lg, a.pt_lg, a.pb_sm]}>
           <AlfText variant="heading" color="primary_800">
@@ -145,6 +147,7 @@ export function CourseDetailScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
+        </ContentContainer>
 
         {lessons.length === 0 ? (
           <EmptyState
@@ -160,8 +163,7 @@ export function CourseDetailScreen() {
             onSelectLesson={handleSelectLesson}
           />
         )}
-        </ContentContainer>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }

@@ -7,12 +7,14 @@ import { useBreakpoint, useTheme } from "@apice/mobile";
 import { HomeScreen } from "@/screens/HomeScreen";
 import { CoursesScreen } from "@/screens/CoursesScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
+import { CoursePreviewScreen } from "@/screens/CoursePreviewScreen";
 import { CourseDetailScreen } from "@/screens/CourseDetailScreen";
 import { LessonPlayerScreen } from "@/screens/LessonPlayerScreen";
 import { QuizScreen } from "@/screens/QuizScreen";
 
 export type RootStackParamList = {
   Tabs: undefined;
+  CoursePreview: { courseId: string; courseName: string };
   CourseDetail: { courseId: string; courseName: string };
   LessonPlayer: {
     courseId: string;
@@ -108,6 +110,16 @@ export function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Tabs" component={TabNavigator} />
+      <Stack.Screen
+        name="CoursePreview"
+        component={CoursePreviewScreen}
+        options={({ route }) => ({
+          title: route.params.courseName,
+          headerShown: true,
+          headerTintColor: "#4A1052",
+          headerTitleStyle: { fontFamily: "Raleway_700Bold" },
+        })}
+      />
       <Stack.Screen
         name="CourseDetail"
         component={CourseDetailScreen}

@@ -14,6 +14,13 @@ export interface CertificateListProps {
   certificates: Certificate[];
   onDownload: (certificate: Certificate) => void;
   emptyText?: string;
+  /**
+   * Render as a plain block (rows mapped) instead of a FlatList. Set this
+   * when the component lives inside a parent ScrollView — a same-orientation
+   * virtualized list inside a ScrollView breaks windowing and RN warns.
+   * Certificate counts are naturally small (≤ courses completed).
+   */
+  nested?: boolean;
 }
 
 /**
@@ -84,6 +91,7 @@ export default function CertificateList({
   certificates,
   onDownload,
   emptyText = "Aún no tienes certificados. Completa un programa para obtener uno.",
+  nested = false,
 }: CertificateListProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -104,6 +112,21 @@ export default function CertificateList({
         >
           {emptyText}
         </Text>
+      </View>
+    );
+  }
+
+  if (nested) {
+    return (
+      <View style={styles.content}>
+        {certificates.map((certificate) => (
+          <CertificateRow
+            key={certificate.id}
+            certificate={certificate}
+            onDownload={onDownload}
+            isDark={isDark}
+          />
+        ))}
       </View>
     );
   }

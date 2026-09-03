@@ -124,7 +124,9 @@ export function CoursesScreen() {
 
   const openCourse = React.useCallback(
     (course: { id: string; name: string }) => {
-      navigation.navigate("CourseDetail", {
+      // The catalogue opens the preview (info + benefits + curriculum);
+      // CourseDetail — the lesson road — is one tap further, from there.
+      navigation.navigate("CoursePreview", {
         courseId: course.id,
         courseName: course.name,
       });

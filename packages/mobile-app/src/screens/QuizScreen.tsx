@@ -67,7 +67,7 @@ export function QuizScreen() {
   // ─── Result state ─────────────────────────────────────────────────────────
   if (result) {
     return (
-      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["top"]}>
+      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["bottom"]}>
         <View style={styles.resultContainer}>
           <Ionicons
             name={result.passed ? "checkmark-circle" : "close-circle"}
@@ -113,7 +113,7 @@ export function QuizScreen() {
   // ─── Loading / error / empty states ───────────────────────────────────────
   if (isLoading) {
     return (
-      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["top"]}>
+      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["bottom"]}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.palette.primary_800} />
         </View>
@@ -123,7 +123,7 @@ export function QuizScreen() {
 
   if (error || questions.length === 0) {
     return (
-      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["top"]}>
+      <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["bottom"]}>
         <View style={styles.centered}>
           <AlfText variant="title">Sin cuestionario</AlfText>
           <AlfText variant="body" color="contrast_500" style={a.mt_sm}>
@@ -136,7 +136,7 @@ export function QuizScreen() {
 
   // ─── Quiz form ────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["top"]}>
+    <SafeAreaView style={[a.flex_1, theme.atoms.bg]} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         {questions.map((question, qIndex) => (
           <View

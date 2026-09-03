@@ -159,6 +159,7 @@ export function ProfileScreen() {
           <ActivityIndicator color={theme.palette.primary_800} />
         ) : (
           <CertificateList
+            nested
             certificates={certs?.certificates ?? []}
             onDownload={async (cert) => {
               try {

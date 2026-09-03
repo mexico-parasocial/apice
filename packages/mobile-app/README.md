@@ -9,25 +9,22 @@ automatically by `pnpm install` / `expo prebuild` / `pod install`):
 
 1. **Autolinking patch** — `patches/expo-modules-autolinking@2.0.8.patch`
    (registered in `pnpm-workspace.yaml`). The bundled autolinking (expo@52)
-   doesn't treat the umbrella `apple` platform as supporting `ios`, so modules
-   like `expo-video` were silently skipped from the Podfile.
-2. **expo-video API shims** — `patches/expo-video@57.0.0.patch`. expo-video 57
-   targets a newer expo-modules-core than expo@52 ships; the patch renames
-   `emit(event:payload:)` → `emit(event:arguments:)` and replaces the
-   nonexistent `appContext.jsLogger` with `os_log`.
-3. **iOS deployment target 16.4** — `ExpoVideo.podspec` requires iOS 16.4+.
-   Set via the `expo-build-properties` plugin in `app.config.js`. Do not lower it.
-4. **fmt C++17 workaround** — the RN-vendored fmt 11.0.2 fails with the current
+   doesn't treat the umbrella `apple` platform as supporting `ios`, so native
+   modules were silently skipped from the Podfile.
+2. **iOS deployment target 16.4** — set via the `expo-build-properties` plugin
+   in `app.config.js`. It was raised for the (since removed) expo-video
+   podspec; `BlueskyVideo` only needs 13.4. Don't lower it without a device
+   test.
+3. **fmt C++17 workaround** — the RN-vendored fmt 11.0.2 fails with the current
    Xcode toolchain (consteval errors). The `post_install` hook in `ios/Podfile`
    compiles the fmt pod as C++17, which makes fmt take its
    `FMT_USE_CONSTEVAL=0` branch (a `-DFMT_USE_CONSTEVAL=0` flag does NOT work —
    fmt's base.h re-defines the macro without guards).
 
 Native video stack (2026-07-20): the player is **`@bsky.app/video`**
-(Bluesky's own native video view — same player as the Bluesky app), not
-expo-video. `BlueskyVideo.podspec` links cleanly; no patches needed. The
-legacy expo-video pnpm patch (`patches/expo-video@57.0.0.patch`) remains
-registered only until the dependency is fully removed.
+(Bluesky's own native video view — same player as the Bluesky app).
+`BlueskyVideo.podspec` links cleanly; no patches needed. The legacy expo-video
+dependency and its pnpm patch were fully removed (2026-09-01).
 
 Additional native modules and their notes:
 - `expo-keep-awake` — screen stays on during playback (links cleanly).

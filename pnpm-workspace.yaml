@@ -35,5 +35,4 @@ ignoredBuiltDependencies:
 
 patchedDependencies:
   expo-modules-autolinking@2.0.8: patches/expo-modules-autolinking@2.0.8.patch
-  expo-video@57.0.0: patches/expo-video@57.0.0.patch
   expo-sharing@57.0.6: patches/expo-sharing@57.0.6.patch

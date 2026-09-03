@@ -10,7 +10,6 @@ overrides:
 patchedDependencies:
   expo-modules-autolinking@2.0.8: 7b23fd4743a9dd50aa34ab429fcff6533c22262284bd2900b32d43159ed6c82b
   expo-sharing@57.0.6: e435f00d92c90cce624e3978c2472d44ea94fd421d97ca49ab2f4dc9befd6476
-  expo-video@57.0.0: fafe5976e70b0a8881031bc26ec20dcda9ee3785e64c44e29023ba6451a7a63a
 
 importers:
 
@@ -205,7 +204,7 @@ importers:
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^7.0.1
-        version: 7.0.1(@testing-library/dom@10.4.1)(vitest@4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0)))
+        version: 7.0.1(@testing-library/dom@10.4.1)(vitest@4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0)))
       '@testing-library/react-native':
         specifier: ^14.0.1
         version: 14.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1)(test-renderer@1.2.0(@types/react@18.3.31)(react@18.3.1))
@@ -215,9 +214,6 @@ importers:
       '@types/react-native':
         specifier: ~0.72.0
         version: 0.72.8(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))
-      expo-video:
-        specifier: ^57.0.0
-        version: 57.0.0(patch_hash=fafe5976e70b0a8881031bc26ec20dcda9ee3785e64c44e29023ba6451a7a63a)(expo@52.0.49(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@expo/metro-runtime@4.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)))(bufferutil@4.1.0)(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1)(utf-8-validate@6.0.6))(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1)
       happy-dom:
         specifier: ^20.12.0
         version: 20.12.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -226,7 +222,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.5
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0))
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0))
 
   packages/mobile-app:
     dependencies:
@@ -314,9 +310,6 @@ importers:
       expo-status-bar:
         specifier: ~2.0.0
         version: 2.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1)
-      expo-video:
-        specifier: ^57.0.0
-        version: 57.0.0(patch_hash=fafe5976e70b0a8881031bc26ec20dcda9ee3785e64c44e29023ba6451a7a63a)(expo@52.0.49(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@expo/metro-runtime@4.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)))(bufferutil@4.1.0)(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1))(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1)
       expo-web-browser:
         specifier: ^57.0.1
         version: 57.0.1(expo@52.0.49(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@expo/metro-runtime@4.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)))(bufferutil@4.1.0)(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1))(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))
@@ -510,7 +503,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.5
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0))
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0))
 
 packages:
 
@@ -4057,13 +4050,6 @@ packages:
   expo-status-bar@2.0.1:
     resolution: {integrity: sha512-AkIPX7jWHRPp83UBZ1iXtVvyr0g+DgBVvIXTtlmPtmUsm8Vq9Bb5IGj86PW8osuFlgoTVAg7HI/+Ok7yEYwiRg==}
     peerDependencies:
-      react: '*'
-      react-native: '*'
-
-  expo-video@57.0.0:
-    resolution: {integrity: sha512-beAFaVGS529ZiBM50tWr8g7ai/O/R+RGor4qG0JSskuyw5ME5ORgKfh6PRVBPAh43e+BuH7fCsPAt8KOEUi2MA==}
-    peerDependencies:
-      expo: '*'
       react: '*'
       react-native: '*'
 
@@ -9895,7 +9881,7 @@ snapshots:
       picocolors: 1.1.1
       pretty-format: 27.5.1
 
-  '@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.1)(vitest@4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0)))':
+  '@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.1)(vitest@4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0)))':
     dependencies:
       '@adobe/css-tools': 4.5.0
       '@testing-library/dom': 10.4.1
@@ -9905,7 +9891,7 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
     optionalDependencies:
-      vitest: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0))
+      vitest: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0))
 
   '@testing-library/react-native@14.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1)(test-renderer@1.2.0(@types/react@18.3.31)(react@18.3.1))':
     dependencies:
@@ -11884,18 +11870,6 @@ snapshots:
 
   expo-status-bar@2.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1):
     dependencies:
-      react: 18.3.1
-      react-native: 0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)
-
-  expo-video@57.0.0(patch_hash=fafe5976e70b0a8881031bc26ec20dcda9ee3785e64c44e29023ba6451a7a63a)(expo@52.0.49(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@expo/metro-runtime@4.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)))(bufferutil@4.1.0)(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1)(utf-8-validate@6.0.6))(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1):
-    dependencies:
-      expo: 52.0.49(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@expo/metro-runtime@4.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)))(bufferutil@4.1.0)(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1)(utf-8-validate@6.0.6)
-      react: 18.3.1
-      react-native: 0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)
-
-  expo-video@57.0.0(patch_hash=fafe5976e70b0a8881031bc26ec20dcda9ee3785e64c44e29023ba6451a7a63a)(expo@52.0.49(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@expo/metro-runtime@4.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)))(bufferutil@4.1.0)(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1))(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1):
-    dependencies:
-      expo: 52.0.49(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@expo/metro-runtime@4.0.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)))(bufferutil@4.1.0)(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-native: 0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(bufferutil@4.1.0)(react@18.3.1)
 
@@ -15476,7 +15450,7 @@ snapshots:
       terser: 5.48.0
       yaml: 2.9.0
 
-  vitest@4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0)):
+  vitest@4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.4.9)(happy-dom@20.12.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.9
       '@vitest/mocker': 4.1.9(vite@8.1.3(jiti@1.21.7)(terser@5.48.0)(yaml@2.9.0))
