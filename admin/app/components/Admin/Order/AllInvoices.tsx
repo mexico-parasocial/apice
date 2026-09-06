@@ -14,8 +14,16 @@ type Props = {
 };
 
 const AllInvoices = ({ isDashboard }: Props) => {
-  const { theme, setTheme } = useTheme();
-  const { isLoading, data } = useGetAllOrdersQuery({});
+  const { theme } = useTheme();
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 25,
+  });
+
+  const { isLoading, data } = useGetAllOrdersQuery({
+    page: paginationModel.page + 1,
+    limit: paginationModel.pageSize,
+  });
   const { data: usersData } = useGetAllUsersQuery({});
   const { data: coursesData } = useGetAllCoursesQuery({});
 
@@ -24,8 +32,6 @@ const AllInvoices = ({ isDashboard }: Props) => {
   useEffect(() => {
     if (data) {
       const temp = data.orders.map((item: any) => {
-        // The API is Prisma/Postgres and returns `id`; `_id` is a leftover
-        // from the MongoDB original. Accept either so lookups actually match.
         const user = usersData?.users.find(
           (user: any) => (user._id ?? user.id) === item.userId
         );
@@ -152,6 +158,11 @@ const AllInvoices = ({ isDashboard }: Props) => {
               checkboxSelection={isDashboard ? false : true}
               rows={rows}
               columns={columns}
+              rowCount={data?.pagination?.total ?? 0}
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+              paginationMode="server"
+              pageSizeOptions={[25, 50, 100]}
               components={isDashboard ? {} : { Toolbar: GridToolbar }}
             />
           </Box>

@@ -14,17 +14,32 @@ export const newOrder = CatchAsyncError(async (data: any, res: Response) => {
   });
 });
 
-// Get All Orders
-export const getAllOrdersService = async (res: Response) => {
-  const orders = await prisma.order.findMany({
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+// Get All Orders (paginated)
+export const getAllOrdersService = async (
+  res: Response,
+  page: number = 1,
+  limit: number = 50
+) => {
+  const skip = (page - 1) * limit;
 
-  res.status(201).json({
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.order.count(),
+  ]);
+
+  res.status(200).json({
     success: true,
     orders,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
   });
 };
 

@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import ErrorHandler from "../utils/ErrorHandler";
 import cron from "node-cron";
+import { logger } from "../utils/logger";
 
 // get my notifications --- authenticated learner
 export const getMyNotifications = CatchAsyncError(
@@ -99,5 +100,5 @@ cron.schedule("0 0 0 * * *", async () => {
       },
     },
   });
-  console.log("Deleted read notifications");
+  logger.info("Deleted read notifications older than 30 days");
 });

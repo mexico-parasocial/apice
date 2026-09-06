@@ -228,7 +228,12 @@ export const createMobileOrder = CatchAsyncError(
 export const getAllOrders = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      getAllOrdersService(res);
+      const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(
+        200,
+        Math.max(1, parseInt(req.query.limit as string, 10) || 50)
+      );
+      getAllOrdersService(res, page, limit);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }

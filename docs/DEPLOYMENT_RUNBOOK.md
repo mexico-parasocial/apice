@@ -68,13 +68,15 @@ El server corre `prisma migrate deploy` al arrancar (schema al día).
 
 ## 5. Verificación
 
-- [ ] `curl https://api.apice.example.com/test` → `{"succcess":true,...}`
+- [ ] `curl https://api.apice.example.com/test` → `{"success":true,...}`
 - [ ] `curl https://api.apice.example.com/api/v1/auth/atproto/client-metadata.json` → metadata OAuth pública
 - [ ] `curl https://api.apice.example.com/api/v1/network/courses` → `{"success":true,...}`
 - [ ] `https://admin.apice.example.com` carga el panel
 - [ ] Subir un video desde admin (dashboard Streamplace en `https://vod.apice.example.com` o upload directo)
 - [ ] `pnpm smoke:video -- "at://did:web:vod.apice.example.com/place.stream.video/<rkey>"` (ver `docs/VIDEO_PIPELINE_RUNBOOK.md`)
 - [ ] Indexer: `docker compose -f docker-compose.prod.yml logs indexer` → "connected"
+- [ ] Monitoring: `make monitoring-up` → Uptime Kuma en `http://localhost:3001` (configure alertas)
+- [ ] Backups: `docker compose -f docker-compose.prod.yml logs backups` → "Backup uploaded" en el cron diario
 
 ## 6. Notas operativas
 

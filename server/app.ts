@@ -6,6 +6,11 @@ import { loadEnv } from "./utils/env";
 loadEnv();
 
 export const app = express();
+
+// Trust the first proxy hop (Cloudflare → Caddy → Express) so req.ip and
+// the rate limiter see the real client IP instead of the proxy's.
+app.set("trust proxy", 1);
+
 import cors from "cors";
 import helmet from "helmet";
 import path from "path";
@@ -39,8 +44,9 @@ import { logger } from "./utils/logger";
 // Security headers
 app.use(helmet());
 
-// body parser
-app.use(express.json({ limit: "50mb" }));
+// body parser — 2 MB is generous for a course-management API; lesson
+// content is uploaded directly to Streamplace/S3, not through this endpoint.
+app.use(express.json({ limit: "2mb" }));
 
 // cookie parser
 app.use(cookieParser());
@@ -211,7 +217,7 @@ if (process.env.ALLOW_DIRECT_VIDEO_URLS === "true") {
 // testing api
 app.get("/test", (req: Request, res: Response, next: NextFunction) => {
   res.status(200).json({
-    succcess: true,
+    success: true,
     message: "API is working",
   });
 });

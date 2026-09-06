@@ -24,6 +24,7 @@ import {
 import cloudinary from "cloudinary";
 import { z } from "zod";
 import { NextFunction, Request, Response } from "express";
+import { logger } from "../utils/logger";
 
 // register user
 interface IRegistrationBody {
@@ -33,10 +34,29 @@ interface IRegistrationBody {
   avatar?: string;
 }
 
+const registrationSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  email: z.string().email("Invalid email address"),
+  password: z
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .max(128, "Password is too long"),
+});
+
 export const registrationUser = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, email, password } = req.body;
+      const parsed = registrationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return next(
+          new ErrorHandler(
+            parsed.error.issues.map((e) => e.message).join(", "),
+            400
+          )
+        );
+      }
+
+      const { name, email, password } = parsed.data;
 
       const isEmailExist = await prisma.user.findUnique({
         where: { email },
@@ -161,13 +181,25 @@ interface ILoginRequest {
   password: string;
 }
 
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
 export const loginUser = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, password } = req.body as ILoginRequest;
-      if (!email || !password) {
-        return next(new ErrorHandler("Please enter email and password", 400));
+      const parsed = loginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return next(
+          new ErrorHandler(
+            parsed.error.issues.map((e) => e.message).join(", "),
+            400
+          )
+        );
       }
+
+      const { email, password } = parsed.data;
 
       // Opt back into the hash (utils/db.ts omits it globally) purely to
       // verify the credential — `safeUser` is what leaves this function.
@@ -499,7 +531,7 @@ export const updateProfilePicture = CatchAsyncError(
         });
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error(error, "updateProfilePicture failed");
       return next(new ErrorHandler(error.message, 400));
     }
   }

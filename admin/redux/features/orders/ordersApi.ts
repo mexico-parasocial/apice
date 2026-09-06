@@ -3,8 +3,8 @@ import { apiSlice } from "../api/apiSlice";
 export const ordersApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getAllOrders: builder.query({
-      query: (type) => ({
-        url: `get-orders`,
+      query: ({ page, limit }: { page?: number; limit?: number } = {}) => ({
+        url: `get-orders?page=${page ?? 1}&limit=${limit ?? 50}`,
         method: "GET",
         credentials: "include" as const,
       }),
