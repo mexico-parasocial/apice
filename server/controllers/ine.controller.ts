@@ -66,6 +66,9 @@ export const submitINEVerification = CatchAsyncError(
           backUrl,
           ineId: ineId ?? null,
           status: "pending",
+          reviewedById: null,
+          reviewedAt: null,
+          reviewNote: null,
         },
         create: {
           userId,
@@ -90,8 +93,7 @@ export const listINEVerifications = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { status } = req.query;
-      // An unrecognised status would otherwise surface as a Prisma 500 on
-      // the enum column; validate it into a clean 400 here.
+      // Validate the filter into a clean 400 rather than an empty page.
       if (status !== undefined && !listINEStatuses.includes(status as any)) {
         return next(
           new ErrorHandler(
@@ -128,18 +130,31 @@ export const listINEVerifications = CatchAsyncError(
   }
 );
 
+const reviewINESchema = z.object({
+  status: z.enum(["approved", "rejected"]),
+  note: z.string().max(500).optional(),
+});
+
 export const reviewINEVerification = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { status } = req.body;
-      if (!status || !["approved", "rejected"].includes(status)) {
+      const parsed = reviewINESchema.safeParse(req.body);
+      if (!parsed.success) {
         return next(new ErrorHandler("status must be approved or rejected", 400));
       }
+      const { status, note } = parsed.data;
 
+      // A missing id is a P2025, which the error middleware answers as 404.
+      // Who decided, and when, is kept with the record.
       const updated = await prisma.iNEVerification.update({
         where: { id },
-        data: { status },
+        data: {
+          status,
+          reviewNote: note ?? null,
+          reviewedById: req.user!.id,
+          reviewedAt: new Date(),
+        },
       });
 
       res.status(200).json({

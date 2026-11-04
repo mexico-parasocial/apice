@@ -12,15 +12,19 @@ generator client {
 
 // Deleting a user takes their INE verification (identity documents) with them.
 model INEVerification {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  frontUrl  String
-  backUrl   String
-  status    String // pending | approved | rejected
-  ineId     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String    @id @default(uuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  frontUrl     String
+  backUrl      String
+  status       String // pending | approved | rejected
+  ineId        String?
+  // Audit trail for the review decision on a government ID.
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNote   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model User {
