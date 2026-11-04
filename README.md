@@ -105,7 +105,6 @@ Instructors upload to the self-hosted Streamplace node; Ápice resolves `at://` 
 - `docs/VIDEO_ENCODING.md` — the bitrate ladder and why
 - `docs/MOOC_ON_ATPROTO.md` — the architectural thesis
 - `docs/APICE_BRANDING.md` — visual identity
-- `STRATEGIC_ANALYSIS.md` — the honest internal engineering audit (kept public deliberately: its CRITICAL security findings are all resolved and documented inline)
 
 ## Contributing & security
 

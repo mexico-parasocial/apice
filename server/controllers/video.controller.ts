@@ -169,8 +169,8 @@ export const getLessonPlayback = CatchAsyncError(
 /**
  * POST /api/v1/videos/lessons/:lessonId/progress
  *
- * Stub: accepts watchedSeconds and returns success. Real persistence will
- * reuse /api/v1/update-progress once the video player is integrated.
+ * Records the player's position for the lesson (watchedSeconds only ever
+ * increases). Same write path as /api/v1/update-progress.
  */
 export const reportVideoProgress = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -225,7 +225,8 @@ export const reportVideoProgress = CatchAsyncError(
 /**
  * POST /api/v1/videos/lessons/:lessonId/complete
  *
- * Stub: marks a lesson complete. Real persistence will reuse /api/v1/update-progress.
+ * Marks the lesson complete (subject to the sequential unlock) and stores the
+ * player's QoS telemetry. Same write path as /api/v1/update-progress.
  */
 export const markLessonComplete = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {

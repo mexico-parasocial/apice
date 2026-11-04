@@ -193,7 +193,8 @@ export const uploadCourse = CatchAsyncError(
           url: myCloud.secure_url,
         };
       }
-      createCourse(data, res, next);
+      const course = await createCourse(data);
+      res.status(201).json({ success: true, course });
     } catch (error) {
       return next(error);
     }

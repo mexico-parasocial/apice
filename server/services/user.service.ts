@@ -1,4 +1,3 @@
-import { Response } from "express";
 import { prisma } from "../utils/db";
 import { cacheUser, loadUser } from "../utils/jwt";
 
@@ -7,11 +6,7 @@ import { cacheUser, loadUser } from "../utils/jwt";
 export const getUserById = (id: string) => loadUser(id);
 
 // Get All users
-export const getAllUsersService = async (
-  res: Response,
-  page = 1,
-  limit = 50
-) => {
+export const getAllUsersService = async (page = 1, limit = 50) => {
   const [total, users] = await Promise.all([
     prisma.user.count(),
     prisma.user.findMany({
@@ -26,8 +21,7 @@ export const getAllUsersService = async (
     }),
   ]);
 
-  res.status(200).json({
-    success: true,
+  return {
     // The password hash is omitted at the client level (utils/db.ts), so it
     // cannot reach here. `enrollments` is the course count the admin grid renders.
     users: users.map(({ _count, ...user }) => ({
@@ -41,7 +35,7 @@ export const getAllUsersService = async (
       totalPages: Math.ceil(total / limit) || 1,
       hasMore: page * limit < total,
     },
-  });
+  };
 };
 
 // update user role

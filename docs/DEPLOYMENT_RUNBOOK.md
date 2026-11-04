@@ -68,7 +68,7 @@ El server corre `prisma migrate deploy` al arrancar (schema al día).
 
 ## 5. Verificación
 
-- [ ] `curl https://api.apice.example.com/test` → `{"success":true,...}`
+- [ ] `curl https://api.apice.example.com/health` → `{"status":"ok",...}`
 - [ ] `curl https://api.apice.example.com/api/v1/auth/atproto/client-metadata.json` → metadata OAuth pública
 - [ ] `curl https://api.apice.example.com/api/v1/network/courses` → `{"success":true,...}`
 - [ ] `https://admin.apice.example.com` carga el panel

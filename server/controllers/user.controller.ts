@@ -480,7 +480,7 @@ export const getAllUsers = CatchAsyncError(
         200,
         Math.max(1, parseInt(req.query.limit as string, 10) || 50)
       );
-      await getAllUsersService(res, page, limit);
+      res.status(200).json({ success: true, ...(await getAllUsersService(page, limit)) });
     } catch (error) {
       return next(error);
     }

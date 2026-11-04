@@ -1,7 +1,5 @@
-import { Response } from "express";
 import { prisma } from "../utils/db";
 import ErrorHandler from "../utils/ErrorHandler";
-import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import { Prisma } from "@prisma/client";
 
 type TxClient = Prisma.TransactionClient;
@@ -146,23 +144,18 @@ export async function syncCourseContent(
   }
 }
 
-// create course
-export const createCourse = CatchAsyncError(async (data: any, res: Response) => {
+// create course (with its sections/lessons) in one transaction
+export async function createCourse(data: any) {
   const { courseData, ...courseFields } = data;
 
-  const course = await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     const created = await tx.course.create({ data: courseFields });
     if (Array.isArray(courseData) && courseData.length > 0) {
       await syncCourseContent(created.id, courseData, tx);
     }
     return created;
   });
-
-  res.status(201).json({
-    success: true,
-    course,
-  });
-});
+}
 
 // Get All Courses
 export const getAllCoursesService = () =>

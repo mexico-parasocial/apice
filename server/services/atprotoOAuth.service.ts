@@ -145,17 +145,7 @@ export async function completeAuthorization(params: URLSearchParams) {
   return { session, stateData };
 }
 
-/** True if we hold an OAuth session (with repo write) for this DID. */
-export async function hasStoredSession(did: string): Promise<boolean> {
-  return (await redis.get(sessionKey(did))) !== null;
-}
-
 /** Restores the OAuth session for a DID (auto-refreshes if needed). */
 export async function restoreSession(did: string) {
   return getOAuthClient().restore(did);
-}
-
-/** Deletes the stored session for a DID (e.g. on disconnect). */
-export async function deleteSession(did: string) {
-  await redis.del(sessionKey(did));
 }

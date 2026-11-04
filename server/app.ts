@@ -226,14 +226,6 @@ if (process.env.ALLOW_DIRECT_VIDEO_URLS === "true") {
   );
 }
 
-// testing api
-app.get("/test", (req: Request, res: Response, next: NextFunction) => {
-  res.status(200).json({
-    success: true,
-    message: "API is working",
-  });
-});
-
 // unknown route
 app.all("*", (req: Request, res: Response, next: NextFunction) => {
   next(new ErrorHandler(`Route ${req.originalUrl} not found`, 404));

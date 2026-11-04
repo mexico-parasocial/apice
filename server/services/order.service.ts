@@ -1,26 +1,8 @@
-import { Response } from "express";
-import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import { prisma } from "../utils/db";
 import { publishNotification } from "./notification.service";
 
-// create new order
-export const newOrder = CatchAsyncError(async (data: any, res: Response) => {
-  const order = await prisma.order.create({
-    data,
-  });
-
-  res.status(201).json({
-    success: true,
-    order,
-  });
-});
-
 // Get All Orders (paginated)
-export const getAllOrdersService = async (
-  res: Response,
-  page: number = 1,
-  limit: number = 50
-) => {
+export const getAllOrdersService = async (page = 1, limit = 50) => {
   const skip = (page - 1) * limit;
 
   const [orders, total] = await Promise.all([
@@ -32,16 +14,15 @@ export const getAllOrdersService = async (
     prisma.order.count(),
   ]);
 
-  res.status(200).json({
-    success: true,
+  return {
     orders,
     pagination: {
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / limit) || 1,
     },
-  });
+  };
 };
 
 /**
