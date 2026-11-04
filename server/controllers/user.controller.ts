@@ -253,8 +253,10 @@ export const updateAccessToken = CatchAsyncError(
       const refresh_token = req.headers["refresh-token"] as string;
       const message = "Could not refresh token";
 
+      // Every rejection below is a 401: by the time we get here the access
+      // token has expired, so failing to refresh means the session is over.
       if (!refresh_token) {
-        return next(new ErrorHandler(message, 400));
+        return next(new ErrorHandler(message, 401));
       }
 
       let decoded: JwtPayload;
@@ -264,18 +266,18 @@ export const updateAccessToken = CatchAsyncError(
           process.env.REFRESH_TOKEN as string
         ) as JwtPayload;
       } catch {
-        return next(new ErrorHandler(message, 400));
+        return next(new ErrorHandler(message, 401));
       }
 
       if (!decoded?.id || !decoded?.jti) {
-        return next(new ErrorHandler(message, 400));
+        return next(new ErrorHandler(message, 401));
       }
 
       const session = await redis.get(decoded.id as string);
 
       if (!session) {
         return next(
-          new ErrorHandler("Please login for access this resources!", 400)
+          new ErrorHandler("Please login for access this resources!", 401)
         );
       }
 
@@ -283,7 +285,7 @@ export const updateAccessToken = CatchAsyncError(
       const stillValid = await isRefreshTokenValid(decoded.id, decoded.jti);
       if (!stillValid) {
         return next(
-          new ErrorHandler("Session expired, please login again", 400)
+          new ErrorHandler("Session expired, please login again", 401)
         );
       }
 
@@ -309,7 +311,9 @@ export const updateAccessToken = CatchAsyncError(
 
       return next();
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      // Redis or signing blew up: our failure, not the caller's credentials.
+      // Must not be a 401, or an infra blip would log every client out.
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );

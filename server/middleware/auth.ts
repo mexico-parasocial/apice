@@ -6,12 +6,17 @@ import { redis } from "../utils/redis";
 import { updateAccessToken } from "../controllers/user.controller";
 
 // authenticated user
+//
+// Every "no usable session" outcome is a 401, never a 400: clients treat 401
+// as "the session is dead, log out" (the mobile AuthProvider does exactly
+// that), whereas a 400 just surfaces as a per-screen error and leaves the user
+// stuck "logged in". 403 is reserved for authorizeRoles below.
 export const isAutheticated = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const access_token = req.headers["access-token"] as string;
     if (!access_token) {
       return next(
-        new ErrorHandler("Please login to access this resource", 400)
+        new ErrorHandler("Please login to access this resource", 401)
       );
     }
     // Verify signature but tolerate expiry here: expired tokens are handled
@@ -22,11 +27,11 @@ export const isAutheticated = CatchAsyncError(
         ignoreExpiration: true,
       }) as JwtPayload;
     } catch {
-      return next(new ErrorHandler("access token is not valid", 400));
+      return next(new ErrorHandler("access token is not valid", 401));
     }
 
     if (!decoded?.id) {
-      return next(new ErrorHandler("access token is not valid", 400));
+      return next(new ErrorHandler("access token is not valid", 401));
     }
 
     // check if the access token is expired
@@ -41,7 +46,7 @@ export const isAutheticated = CatchAsyncError(
 
       if (!user) {
         return next(
-          new ErrorHandler("Please login to access this resource", 400)
+          new ErrorHandler("Please login to access this resource", 401)
         );
       }
 
