@@ -66,6 +66,11 @@ app.use(
       }
     },
     credentials: true,
+    // Rotated tokens come back on these (see updateAccessToken). Browsers hide
+    // non-safelisted response headers from cross-origin JS unless exposed, so
+    // without this the web clients never see the new pair and the next request
+    // presents the refresh token that was just revoked.
+    exposedHeaders: ["x-access-token", "x-refresh-token"],
   })
 );
 

@@ -11,16 +11,16 @@ export const ErrorMiddleware = (
   err.statusCode = err.statusCode || 500;
   err.message = err.message || "Internal server error";
 
-  // wrong jwt error
+  // A JWT that fails verification is a credential problem, not a malformed
+  // request: 401, so clients drop the dead session (see middleware/auth.ts).
   if (err.name === "JsonWebTokenError") {
     const message = `Json web token is invalid, try again`;
-    err = new ErrorHandler(message, 400);
+    err = new ErrorHandler(message, 401);
   }
 
-  // JWT expired error
   if (err.name === "TokenExpiredError") {
     const message = `Json web token is expired, try again`;
-    err = new ErrorHandler(message, 400);
+    err = new ErrorHandler(message, 401);
   }
 
   // 5xx means we broke; log the stack. 4xx is the caller's problem and would

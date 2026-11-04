@@ -23,7 +23,7 @@ export const getMyINEVerification = CatchAsyncError(
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return next(new ErrorHandler("Please login to access this resource", 400));
+        return next(new ErrorHandler("Please login to access this resource", 401));
       }
 
       const verification = await prisma.iNEVerification.findUnique({
@@ -45,7 +45,7 @@ export const submitINEVerification = CatchAsyncError(
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return next(new ErrorHandler("Please login to access this resource", 400));
+        return next(new ErrorHandler("Please login to access this resource", 401));
       }
 
       const parsed = submitINESchema.safeParse(req.body);
