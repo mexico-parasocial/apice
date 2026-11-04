@@ -1,0 +1,105 @@
+# Ápice Mobile App
+
+A minimal Expo iOS/Android app for Ápice built with the same infrastructure patterns as PARA (Expo CNG, Metro, EAS).
+
+## Native build notes
+
+Non-obvious requirements for the iOS build to work (all are durable — applied
+automatically by `pnpm install` / `expo prebuild` / `pod install`):
+
+1. **Autolinking patch** — `patches/expo-modules-autolinking@2.0.8.patch`
+   (registered in `pnpm-workspace.yaml`). The bundled autolinking (expo@52)
+   doesn't treat the umbrella `apple` platform as supporting `ios`, so native
+   modules were silently skipped from the Podfile.
+2. **iOS deployment target 16.4** — set via the `expo-build-properties` plugin
+   in `app.config.js`. It was raised for the (since removed) expo-video
+   podspec; `BlueskyVideo` only needs 13.4. Don't lower it without a device
+   test.
+3. **fmt C++17 workaround** — the RN-vendored fmt 11.0.2 fails with the current
+   Xcode toolchain (consteval errors). The `post_install` hook in `ios/Podfile`
+   compiles the fmt pod as C++17, which makes fmt take its
+   `FMT_USE_CONSTEVAL=0` branch (a `-DFMT_USE_CONSTEVAL=0` flag does NOT work —
+   fmt's base.h re-defines the macro without guards).
+
+Native video stack (2026-07-20): the player is **`@bsky.app/video`**
+(Bluesky's own native video view — same player as the Bluesky app).
+`BlueskyVideo.podspec` links cleanly; no patches needed. The legacy expo-video
+dependency and its pnpm patch were fully removed (2026-09-01).
+
+Additional native modules and their notes:
+- `expo-keep-awake` — screen stays on during playback (links cleanly).
+- `expo-web-browser` — ATProto OAuth login flow (links cleanly).
+- `expo-file-system` + `expo-sharing` — certificate download/share sheet.
+  `expo-sharing@57.0.6` needs `patches/expo-sharing@57.0.6.patch` (its Swift
+  expects a newer expo-file-system API; the patch uses Foundation's
+  `FileManager.isReadableFile` instead).
+
+Platform detection follows the Bluesky pattern via `@bsky.app/alf`
+(`isNative`/`isWeb`/`platform()` + `.native.ts`/`.ts` file splits, e.g.
+`certificateDownload.native.ts`).
+
+Last verified: full `xcodebuild` simulator build succeeds (2026-07-20, with
+@bsky.app/video + expo-keep-awake). Runtime playback on a real
+device/simulator against the Streamplace node is still a manual smoke-test
+step.
+
+## Setup
+
+From the repo root:
+
+```bash
+pnpm install
+cp apps/mobile/.env.example apps/mobile/.env
+```
+
+Edit `.env` if your server is not on `http://127.0.0.1:8000`.
+
+### iOS: pod install after pnpm install
+
+CocoaPods must be re-installed after every `pnpm install` (Expo's
+`postinstall` does not always trigger it). Run this once after install and
+again any time you add or update a native dependency:
+
+```bash
+cd apps/mobile/ios && pod install && cd ../..
+```
+
+If you skip this step, `expo run:ios` or `xcodebuild` will fail with missing
+pod errors.
+
+## Run
+
+```bash
+pnpm web            # Expo web on http://localhost:8081
+pnpm ios            # iOS simulator (runs pod install automatically)
+pnpm android        # Android emulator
+```
+
+Alternatively, from the app directory:
+
+```bash
+cd apps/mobile
+pnpm expo start     # then press i (iOS) or a (Android)
+```
+
+## Features
+
+- **Home** — horizontal optative course carousel.
+- **Courses** — list all courses and enroll in the free ones.
+- **Profile** — Bluesky/iM8 login, certificate list, and completion modal demo.
+
+## Crash reporting (Sentry)
+
+Structure copied from PARA's Sentry setup. Init is gated on the DSN, so a
+build without the variable has Sentry fully inert — nothing to configure for
+local development.
+
+- `EXPO_PUBLIC_SENTRY_DSN` — Sentry project DSN. Unset = disabled.
+- Optional: `EXPO_PUBLIC_ENV` — environment tag (`development`/`production`).
+
+Init lives in `src/observability/sentry.ts` and is called first thing in
+`src/App.tsx`, before fonts/navigation mount. `Network request failed` is
+ignored by design — intermittent connectivity is a condition of the audience
+(prepaid data), not a bug. To enable native crash reporting in EAS builds,
+add the `@sentry/react-native/expo` plugin to `app.config.js` and run the
+Sentry wizard (`npx @sentry/wizard@latest -i reactNative`).

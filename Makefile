@@ -1,44 +1,52 @@
 # ==============================================================================
-# Ápice Monorepo Makefile (Inspired by bluesky-social/atproto)
+# Ápice monorepo — shortcuts for the pnpm scripts in package.json.
+#   apps/api     Express API      apps/admin   Next.js panel
+#   apps/mobile  Expo app         infra/       compose helpers, Caddy, ops scripts
 # ==============================================================================
 
-.PHONY: run-dev-env dev dev-server dev-admin dev-web down test typecheck doctor prod-doctor clean monitoring-up
+.PHONY: run-dev-env dev-api dev-admin dev-web dev-indexer seed down test typecheck doctor prod-doctor health-check clean monitoring-up
 
 # Boot infrastructure (Postgres + Redis), run migrations & check health
 run-dev-env:
-	@./scripts/run-dev-env.sh
+	@./infra/scripts/dev/run-dev-env.sh
 
 # Diagnose the running stack: API probes, Postgres, Redis, SeaweedFS, Streamplace
 doctor:
-	@./scripts/doctor.sh
+	@./infra/scripts/dev/doctor.sh
 
 # Same checks against the production compose file
 prod-doctor:
-	@./scripts/doctor.sh --prod
+	@./infra/scripts/dev/doctor.sh --prod
 
-# Start backend server
-dev-server:
-	pnpm dev:server
+dev-api:
+	pnpm dev:api
 
-# Start Next.js admin dashboard
 dev-admin:
 	pnpm dev:admin
 
-# Start React Native Expo web bundler
 dev-web:
 	pnpm web
 
-# Run full typecheck across monorepo packages
+dev-indexer:
+	pnpm dev:indexer
+
+# Seed demo content (civic courses)
+seed:
+	pnpm seed
+
 typecheck:
 	pnpm typecheck
+
+test:
+	pnpm test
 
 # Stop all docker containers and clean up orphans
 down:
 	docker compose down --remove-orphans
 
-# Full clean reset: stop containers and clean node_modules build artifacts
+# Full clean reset: stop containers and remove build artifacts
 clean: down
-	rm -rf node_modules/.cache server/build packages/mobile-app/.expo admin/.next
+	rm -rf node_modules/.cache apps/api/build apps/mobile/.expo apps/admin/.next
 
 # Start Uptime Kuma monitoring UI (http://localhost:3001)
 monitoring-up:
@@ -46,4 +54,4 @@ monitoring-up:
 
 # One-shot health check (API /ready + /metrics + Docker unhealthy containers)
 health-check:
-	@./scripts/health-check.sh
+	@./infra/scripts/dev/health-check.sh
