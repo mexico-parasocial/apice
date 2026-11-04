@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@atproto/oauth-client-browser": "^0.4.8",
@@ -41,5 +42,8 @@
     "tus-js-client": "^4.3.1",
     "typescript": "5.1.6",
     "yup": "^1.2.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.5"
   }
 }

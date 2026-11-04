@@ -82,14 +82,29 @@ export function createUpload(
   });
 }
 
-/** Step 2 — TUS resumable upload. Bearer token only; no DPoP on chunks. */
+/** Thrown when the admin cancels; callers treat it as a normal outcome, not a failure. */
+export class UploadCancelledError extends Error {
+  constructor() {
+    super("Subida cancelada");
+    this.name = "UploadCancelledError";
+  }
+}
+
+/**
+ * Step 2 — TUS resumable upload. Bearer token only; no DPoP on chunks.
+ * Aborting via `signal` stops the transfer and asks the node to discard the
+ * partial upload.
+ */
 export function uploadFileWithTus(
   uploadUrl: string,
   uploadToken: string,
   file: File,
-  onProgress: (pct: number) => void
+  onProgress: (pct: number) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new UploadCancelledError());
+
     const upload = new tus.Upload(file, {
       uploadUrl,
       headers: { Authorization: `Bearer ${uploadToken}` },
@@ -103,6 +118,16 @@ export function uploadFileWithTus(
       onError: (error) =>
         reject(new Error(`Error subiendo el video: ${error.message}`)),
     });
+    signal?.addEventListener(
+      "abort",
+      () => {
+        upload.abort(true).catch(() => {
+          /* best effort: the node also expires abandoned uploads */
+        });
+        reject(new UploadCancelledError());
+      },
+      { once: true }
+    );
     upload.start();
   });
 }
@@ -127,7 +152,7 @@ export async function waitForUploadDone(
   const deadline = Date.now() + POLL_TIMEOUT_MS;
 
   for (;;) {
-    if (signal?.aborted) throw new Error("Subida cancelada");
+    if (signal?.aborted) throw new UploadCancelledError();
     if (Date.now() > deadline) {
       throw new Error("El procesamiento del video tardó demasiado");
     }
