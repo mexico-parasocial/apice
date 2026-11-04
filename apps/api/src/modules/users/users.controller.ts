@@ -137,7 +137,7 @@ export const updateProfilePicture = CatchAsyncError(
       }
 
       {
-        let userAvatar = user.avatar as any;
+        const userAvatar = user.avatar as any;
         // if user have one avatar then call this if
         if (userAvatar?.public_id) {
           // first delete the old image

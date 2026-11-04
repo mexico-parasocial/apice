@@ -15,6 +15,7 @@
     "seed": "pnpm --filter @apice/api seed",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "lint": "eslint apps/api apps/mobile packages && pnpm --filter @apice/admin lint",
     "doctor": "./infra/scripts/dev/doctor.sh",
     "prod:up": "docker compose -f docker-compose.prod.yml up -d",
     "prod:down": "docker compose -f docker-compose.prod.yml down",
@@ -22,5 +23,11 @@
     "prod:doctor": "./infra/scripts/dev/doctor.sh --prod",
     "prod:backup": "docker compose -f docker-compose.prod.yml exec backups /usr/local/bin/backup-postgres.sh"
   },
-  "license": "GPL-3.0"
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.5.0",
+    "typescript-eslint": "^8.72.1"
+  }
 }

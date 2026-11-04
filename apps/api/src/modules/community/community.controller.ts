@@ -66,7 +66,7 @@ export const addQuestion = CatchAsyncError(
       const newQuestion = await prisma.question.create({
         data: {
           lessonId: contentId,
-          userId: req.user?.id!,
+          userId: req.user!.id,
           question,
         },
         include: {
@@ -152,7 +152,7 @@ export const addAnswer = CatchAsyncError(
       const newAnswer = await prisma.answer.create({
         data: {
           questionId,
-          userId: req.user?.id!,
+          userId: req.user!.id,
           answer,
         },
         include: {
@@ -314,7 +314,7 @@ export const addReplyToReview = CatchAsyncError(
       const reply = await prisma.reviewReply.create({
         data: {
           reviewId,
-          userId: req.user?.id!,
+          userId: req.user!.id,
           comment,
         },
         include: {

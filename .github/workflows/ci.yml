@@ -36,6 +36,9 @@ jobs:
       - name: Typecheck admin
         run: pnpm --filter @apice/admin typecheck
 
+      - name: Lint
+        run: pnpm lint
+
   test:
     runs-on: ubuntu-latest
     needs: typecheck

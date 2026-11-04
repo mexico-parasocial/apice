@@ -40,7 +40,7 @@ export const isAuthenticated = CatchAsyncError(
       return next(new ErrorHandler("access token is not valid", 401));
     }
 
-    let userId = decoded?.id as string | undefined;
+    const userId = decoded?.id as string | undefined;
     let sid = decoded?.sid as string | undefined;
     if (!userId || !sid) {
       return next(new ErrorHandler("access token is not valid", 401));

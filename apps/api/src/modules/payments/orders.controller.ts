@@ -262,7 +262,7 @@ export const newPayment = CatchAsyncError(
       }
 
       const { amount, courseIds } = parsed.data;
-      let validatedAmount = amount;
+      const validatedAmount = amount;
 
       // Course purchase amount validation
       if (courseIds && courseIds.length > 0) {
