@@ -47,7 +47,7 @@ This document describes how to prove and operate the end-to-end Ápice video pip
 | Service | Required vars |
 |---|---|
 | Server | `STREAMPLACE_VOD_BASE_URL=https://vod.apice.example.com`, `ALLOWED_ORIGINS`, `ACCESS_TOKEN`, DB/Redis credentials. |
-| Admin | `NEXT_PUBLIC_SERVER_URI=https://api.apice.example.com/api/v1`, `NEXT_PUBLIC_STREAMPLACE_NODE_URL=https://vod.apice.example.com`, `NEXT_PUBLIC_ADMIN_URL=https://admin.apice.example.com`, `NEXTAUTH_SECRET`. |
+| Admin | `NEXT_PUBLIC_SERVER_URI=https://api.apice.example.com/api/v1`, `NEXT_PUBLIC_STREAMPLACE_NODE_URL=https://vod.apice.example.com`, `NEXT_PUBLIC_ADMIN_URL=https://admin.apice.example.com`. |
 | Mobile | `EXPO_PUBLIC_API_URL=https://api.apice.example.com` (no `/api/v1`). |
 | Streamplace node | `SP_BROADCASTER_HOST=vod.apice.example.com`, `SP_SERVER_HOST=vod.apice.example.com`, `SP_S3_ENDPOINT`, `SP_S3_BUCKET=apice-videos`, S3 keys, `SP_DB_URL`, `SP_BEHIND_HTTPS_PROXY=true`. |
 
