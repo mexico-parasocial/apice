@@ -9,7 +9,7 @@ import {
   syncCourseContent,
 } from "../services/course.service";
 import { redis } from "../utils/redis";
-import { COURSE_CACHE_TTL_SECONDS } from "../utils/cache";
+import { COURSE_CACHE_TTL_SECONDS, courseCacheKey } from "../utils/cache";
 import path from "path";
 import ejs from "ejs";
 import sendMail from "../utils/sendMail";
@@ -70,14 +70,17 @@ async function buildCourseData(courseId: string) {
   return courseData;
 }
 
+// Public projection: reviewer/replier identity is limited to id, name and
+// avatar. Never select email here — this feeds the unauthenticated
+// GET /get-course/:id response and its Redis cache.
 async function buildReviews(courseId: string) {
   const reviews = await prisma.review.findMany({
     where: { courseId },
     include: {
-      user: { select: { id: true, name: true, email: true, avatar: true } },
+      user: { select: { id: true, name: true, avatar: true } },
       replies: {
         include: {
-          user: { select: { id: true, name: true, email: true, avatar: true } },
+          user: { select: { id: true, name: true, avatar: true } },
         },
       },
     },
@@ -230,7 +233,7 @@ export const editCourse = CatchAsyncError(
       });
 
       // Invalidate the public course cache so edits are visible immediately.
-      await redis.del(courseId);
+      await redis.del(courseCacheKey(courseId));
 
       res.status(200).json({
         success: true,
@@ -248,7 +251,7 @@ export const getSingleCourse = CatchAsyncError(
     try {
       const courseId = req.params.id;
 
-      const isCacheExist = await redis.get(courseId);
+      const isCacheExist = await redis.get(courseCacheKey(courseId));
 
       if (isCacheExist) {
         const course = JSON.parse(isCacheExist);
@@ -283,7 +286,7 @@ export const getSingleCourse = CatchAsyncError(
           }),
         };
 
-        await redis.set(courseId, JSON.stringify(publicCourse), "EX", COURSE_CACHE_TTL_SECONDS);
+        await redis.set(courseCacheKey(courseId), JSON.stringify(publicCourse), "EX", COURSE_CACHE_TTL_SECONDS);
 
         res.status(200).json({
           success: true,
@@ -682,7 +685,9 @@ export const addReview = CatchAsyncError(
         },
       });
 
-      await redis.set(courseId, JSON.stringify(updatedCourse), "EX", COURSE_CACHE_TTL_SECONDS);
+      // Invalidate rather than overwrite: the bare course row has no
+      // courseData/reviews, so caching it would break the public view.
+      await redis.del(courseCacheKey(courseId));
 
       await prisma.notification.create({
         data: {
@@ -790,7 +795,7 @@ export const deleteCourse = CatchAsyncError(
         where: { id },
       });
 
-      await redis.del(id);
+      await redis.del(courseCacheKey(id));
 
       res.status(200).json({
         success: true,
