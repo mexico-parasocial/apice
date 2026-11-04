@@ -135,15 +135,29 @@ export const createCourse = CatchAsyncError(async (data: any, res: Response) => 
 });
 
 // Get All Courses
-export const getAllCoursesService = async (res: Response) => {
-  const courses = await prisma.course.findMany({
+export const getAllCoursesService = () =>
+  prisma.course.findMany({
     orderBy: {
       createdAt: "desc",
     },
   });
 
-  res.status(201).json({
-    success: true,
-    courses,
+/**
+ * Recompute a course's average rating from its reviews. The average is taken
+ * in the database: loading every review to average them doesn't scale.
+ */
+export async function refreshCourseRating(courseId: string, tx?: TxClient) {
+  const client = tx ?? prisma;
+  const agg = await client.review.aggregate({
+    where: { courseId },
+    _avg: { rating: true },
   });
-};
+
+  // NOTE: `purchased` is deliberately not written here. It counts orders
+  // (see order.service); a review handler once overwrote it with the review
+  // count, corrupting the counter on every review.
+  return client.course.update({
+    where: { id: courseId },
+    data: { ratings: agg._avg.rating ?? 0 },
+  });
+}

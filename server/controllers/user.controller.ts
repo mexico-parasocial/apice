@@ -14,13 +14,15 @@ import {
   signTokens,
 } from "../utils/jwt";
 import { redis } from "../utils/redis";
-import { SESSION_CACHE_TTL_SECONDS } from "../utils/cache";
+import { SESSION_CACHE_TTL_SECONDS, courseCacheKey } from "../utils/cache";
 import bcrypt from "bcryptjs";
 import {
   getAllUsersService,
   getUserById,
   updateUserRoleService,
 } from "../services/user.service";
+import { refreshCourseRating } from "../services/course.service";
+import { Prisma } from "@prisma/client";
 import cloudinary from "cloudinary";
 import { z } from "zod";
 import { NextFunction, Request, Response } from "express";
@@ -326,9 +328,17 @@ export const getUserInfo = CatchAsyncError(
       if (!userId) {
         return next(new ErrorHandler("Unauthorized", 401));
       }
-      getUserById(userId, res);
+      const user = await getUserById(userId);
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+      res.status(200).json({
+        success: true,
+        user,
+      });
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      // Only infrastructure failures (Redis, the database) land here.
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
@@ -538,8 +548,11 @@ export const updateUserRole = CatchAsyncError(
         where: { email },
       });
       if (isUserExist) {
-        const id = isUserExist.id;
-        updateUserRoleService(res, id, role);
+        const user = await updateUserRoleService(isUserExist.id, role);
+        res.status(200).json({
+          success: true,
+          user,
+        });
       } else {
         res.status(400).json({
           success: false,
@@ -547,12 +560,18 @@ export const updateUserRole = CatchAsyncError(
         });
       }
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      // Validation is handled above; only server-side failures land here.
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
 
 // Delete user --- only for admin
+//
+// What goes with the user is decided by the relations in schema.prisma:
+// enrollments, progress, certificates, video views, the INE verification and
+// community content (questions, answers, reviews, review replies) cascade.
+// Orders are financial records, so they stay, with `userId` set to null.
 export const deleteUser = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -566,9 +585,40 @@ export const deleteUser = CatchAsyncError(
         return next(new ErrorHandler("User not found", 404));
       }
 
-      await prisma.user.delete({
-        where: { id },
+      // The user's reviews cascade away, so the courses they reviewed need
+      // their average rating recomputed in the same transaction. Those
+      // courses, and the ones the user replied to reviews on, also need
+      // their public cache dropped, or it keeps showing the deleted user.
+      const affectedCourseIds = await prisma.$transaction(async (tx) => {
+        const reviews = await tx.review.findMany({
+          where: { userId: id },
+          select: { courseId: true },
+        });
+        const replies = await tx.reviewReply.findMany({
+          where: { userId: id },
+          select: { review: { select: { courseId: true } } },
+        });
+
+        await tx.user.delete({
+          where: { id },
+        });
+
+        const reviewedCourseIds = [...new Set(reviews.map((r) => r.courseId))];
+        for (const courseId of reviewedCourseIds) {
+          await refreshCourseRating(courseId, tx);
+        }
+
+        return [
+          ...new Set([
+            ...reviewedCourseIds,
+            ...replies.map((r) => r.review.courseId),
+          ]),
+        ];
       });
+
+      if (affectedCourseIds.length > 0) {
+        await redis.del(...affectedCourseIds.map(courseCacheKey));
+      }
 
       // Kill the session cache AND every live refresh token — deleting the
       // cache alone would leave issued tokens working until they expire.
@@ -580,7 +630,12 @@ export const deleteUser = CatchAsyncError(
         message: "User deleted successfully",
       });
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      // Forward Prisma errors untouched: the error middleware turns a foreign
+      // key failure into a clean 409 instead of echoing Prisma's message.
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        return next(error);
+      }
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
