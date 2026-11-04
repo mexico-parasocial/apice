@@ -1,6 +1,7 @@
 import axios from "axios";
 import { metrics } from "../../platform/metrics";
 import { log } from "../../platform/logger";
+import { assertApprovedInstructorVideo } from "./instructors";
 
 const videoLog = log("video");
 
@@ -150,6 +151,9 @@ export class DirectUrlProvider implements VideoDeliveryProvider {
 
 export function createVideoDeliveryProvider(videoRef: string): VideoDeliveryProvider {
   if (videoRef.startsWith("at://")) {
+    // Single choke point for attach (verifyVideoRef) and playback: only
+    // approved instructors' videos are ever served.
+    assertApprovedInstructorVideo(videoRef);
     return new StreamplaceProvider(process.env.STREAMPLACE_VOD_BASE_URL);
   }
   if (/^https?:\/\//i.test(videoRef)) {

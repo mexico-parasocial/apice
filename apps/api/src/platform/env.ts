@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { invalidDids, parseDidList } from "../modules/video/instructors";
 
 /**
  * Typed access to process.env, plus startup validation.
@@ -111,6 +112,31 @@ const envSchema = z.object({
       (v) => !isProduction || v !== "true",
       "ALLOW_DIRECT_VIDEO_URLS=true is a local-demo flag and must not be set in production"
     ),
+
+  // Who may publish lesson videos. Streamplace v0.11.13 treats an empty list
+  // as open to every valid DID, so production demands at least one real DID;
+  // malformed entries (placeholders, handles, typos) are rejected everywhere
+  // because they silently match nobody and lock every instructor out.
+  STREAMPLACE_ALLOWED_STREAMS: z
+    .string()
+    .optional()
+    .superRefine((value, ctx) => {
+      const list = parseDidList(value);
+      if (isProduction && list.length === 0) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "STREAMPLACE_ALLOWED_STREAMS is required in production: a comma-separated list of instructor DIDs (an empty list lets any account publish)",
+        });
+      }
+      const bad = invalidDids(list);
+      if (bad.length > 0) {
+        ctx.addIssue({
+          code: "custom",
+          message: `not valid DIDs (expected did:plc:… or did:web:…): ${bad.join(", ")}`,
+        });
+      }
+    }),
 });
 
 let validated = false;

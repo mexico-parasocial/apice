@@ -1,0 +1,14 @@
+{
+  "profile": "apice",
+  "expectedAccountId": "942752161853",
+  "bucket": "apice-942752161853-us-east-2-an",
+  "region": "us-east-2",
+  "endpoint": "https://s3.us-east-2.amazonaws.com",
+  "prefixes": {
+    "pds": "apice-pilot/pds-v1",
+    "media": "apice-pilot/media-v1",
+    "backups": "apice-pilot/backups",
+    "probes": "apice-pilot/probes"
+  },
+  "activeForServices": false
+}

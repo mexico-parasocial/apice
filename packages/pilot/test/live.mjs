@@ -1,0 +1,36 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { Learning } from '../src/learning.mjs';
+import { PERSONAL, SpaceRepository, randomToken } from '../src/protocol.mjs';
+import { account, login, sample } from './helpers.mjs';
+
+const pds = process.env.PILOT_TEST_PDS_URL;
+test('real VLPDS OAuth + Spaces: private journey, atomic replay, snapshots, public privacy', { skip: !pds, timeout: 120_000 }, async () => {
+  const institution = await account(pds, 'institution'), student = await account(pds, 'student'), other = await account(pds, 'outsider');
+  const admin = await login(pds, institution, true), learner = await login(pds, student), outsider = await login(pds, other);
+  const service = new Learning({ institutionDid: admin.did });
+  await service.connect(admin, true); await service.connect(learner); await service.connect(outsider);
+  const input = { kind: 'createCourse', course: sample() }, idempotency = randomToken();
+  const created = await service.execute(admin, idempotency, input);
+  assert.deepEqual(await service.execute(admin, idempotency, input), created);
+  await service.flushOutbox(); const c = service.catalog()[0], [first, second] = c.lessons;
+  await service.execute(learner, randomToken(), { kind: 'enroll', courseId: c.id });
+  await assert.rejects(service.execute(learner, randomToken(), { kind: 'watch', courseId: c.id, lessonId: second.id, watchedSeconds: 10 }), { code: 'LessonLocked' });
+  await service.execute(learner, randomToken(), { kind: 'watch', courseId: c.id, lessonId: first.id, watchedSeconds: 100 });
+  await service.execute(learner, randomToken(), { kind: 'quiz', courseId: c.id, lessonId: first.id, answers: [0] });
+  await service.execute(learner, randomToken(), { kind: 'watch', courseId: c.id, lessonId: second.id, watchedSeconds: 10 });
+  const cert = await service.execute(learner, randomToken(), { kind: 'claimCertificate', courseId: c.id }); assert.equal(cert.certificate.issuer, admin.did);
+  const publicList = async (actor, collection) => actor.rpc('com.atproto.repo.listRecords', { repo: actor.did, collection });
+  assert.equal((await publicList(learner, 'app.civic.progress')).records.length, 0);
+  assert.equal((await publicList(admin, 'app.apice.course')).records.length, 0);
+  const publicCourse = await publicList(admin, 'app.civic.course'); assert.equal(JSON.stringify(publicCourse).includes('correctIndex'), false);
+  const personal = new SpaceRepository(learner, PERSONAL), params = { space: personal.space, repo: learner.did, collection: 'app.apice.request', limit: '1000' };
+  const unauth = await fetch(`${pds}/xrpc/com.atproto.space.listRecords?${new URLSearchParams(params)}`); assert.ok([401,403].includes(unauth.status));
+  await assert.rejects(outsider.rpc('com.atproto.space.listRecords', params));
+  await assert.rejects(learner.rpc('com.atproto.space.listRecords', { ...params, space: service.institution.space, repo: admin.did }));
+  const restored = new Learning({ institutionDid: admin.did }); await restored.connect(admin, true);
+  assert.equal(restored.catalog().length, 1); assert.deepEqual((await restored.state(learner, c.id)).certificate, { ...cert.certificate, $type: 'app.apice.certificate', schemaVersion: 1 });
+  await restored.publishCompletion(learner, c.id, true); const progress = await publicList(learner, 'app.civic.progress'); assert.equal(progress.records.length, 1);
+  await restored.publishCompletion(learner, c.id, true); assert.equal((await publicList(learner, 'app.civic.progress')).records.length, 1);
+  assert.equal(JSON.stringify(progress).includes('answers'), false);
+});

@@ -1,6 +1,7 @@
 import { prisma } from "../../platform/db";
 import ErrorHandler from "../../http/ErrorHandler";
 import { Prisma } from "@prisma/client";
+import { assertApprovedInstructorVideo } from "../video/instructors";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -32,6 +33,14 @@ export async function syncCourseContent(
   options: SyncCourseContentOptions = {}
 ) {
   const client: any = tx ?? prisma;
+
+  // The editor writes lesson video refs straight from its payload, so apply
+  // the same instructor allowlist as the attach endpoint before touching rows.
+  for (const item of items) {
+    if (typeof item?.videoUrl === "string" && item.videoUrl.startsWith("at://")) {
+      assertApprovedInstructorVideo(item.videoUrl);
+    }
+  }
 
   const existingSections = await client.courseSection.findMany({
     where: { courseId },

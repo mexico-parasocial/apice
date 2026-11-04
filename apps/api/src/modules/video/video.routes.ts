@@ -1,6 +1,7 @@
 import express from "express";
 import { isAuthenticated } from "../../http/auth";
 import {
+  checkInstructor,
   getLessonPlayback,
   markLessonComplete,
   reportVideoProgress,
@@ -44,6 +45,15 @@ videoRouter.post(
   isAuthenticated,
   authorizeRoles("admin"),
   setLessonVideoRef
+);
+
+// GET /api/v1/videos/instructors/check?did=…
+// Is this Bluesky account an approved instructor? (admin only)
+videoRouter.get(
+  "/instructors/check",
+  isAuthenticated,
+  authorizeRoles("admin"),
+  checkInstructor
 );
 
 export default videoRouter;

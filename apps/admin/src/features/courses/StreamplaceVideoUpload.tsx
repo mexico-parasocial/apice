@@ -1,6 +1,6 @@
 "use client";
-import { apiFetch } from "@/lib/apiFetch";
 
+import { apiFetch } from "@/lib/apiFetch";
 import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { toast } from "react-hot-toast";
@@ -10,11 +10,26 @@ import {
   initStreamplaceSession,
 } from "@/lib/streamplaceOAuth";
 import {
+  UploadCancelledError,
   createUpload,
   publishVideo,
   uploadFileWithTus,
   waitForUploadDone,
 } from "@/lib/streamplaceUpload";
+import {
+  DEFAULT_MAX_VIDEO_BYTES,
+  assessVideo,
+  readVideoMetadata,
+  type Preflight,
+} from "@/lib/videoPreflight";
+
+const MAX_VIDEO_BYTES =
+  Number(process.env.NEXT_PUBLIC_MAX_VIDEO_MB) > 0
+    ? Number(process.env.NEXT_PUBLIC_MAX_VIDEO_MB) * 1024 * 1024
+    : DEFAULT_MAX_VIDEO_BYTES;
+
+/** Whether the connected Bluesky account may publish lesson videos. */
+type InstructorStatus = "unknown" | "checking" | "approved" | "denied";
 
 type Props = {
   lessonId?: string;
@@ -45,7 +60,44 @@ const StreamplaceVideoUpload: FC<Props> = ({
   const [uploadPct, setUploadPct] = useState(0);
   const [processPct, setProcessPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [preflight, setPreflight] = useState<Preflight | null>(null);
+  const [instructor, setInstructor] = useState<InstructorStatus>("unknown");
   const abortRef = useRef<AbortController | null>(null);
+  // Guards against a slow metadata read landing after the file changed.
+  const fileTokenRef = useRef(0);
+
+  // Don't leave a transfer running if the editor is closed mid-upload.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  // Ask the server whether this account is an approved instructor as soon as
+  // we know which account it is. Without this the answer only arrives at the
+  // link step, after a long upload and a public record already exists. A
+  // failed check is "unknown", not "denied": the server still enforces the
+  // allowlist when the video is linked.
+  useEffect(() => {
+    if (!session) {
+      setInstructor("unknown");
+      return;
+    }
+    let cancelled = false;
+    setInstructor("checking");
+    apiFetch(
+      `${process.env.NEXT_PUBLIC_SERVER_URI}/videos/instructors/check?did=${encodeURIComponent(session.sub)}`,
+      {
+      }
+    )
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        if (!cancelled) setInstructor(data.allowed ? "approved" : "denied");
+      })
+      .catch(() => {
+        if (!cancelled) setInstructor("unknown");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
 
   // Restore an existing OAuth session on mount.
   useEffect(() => {
@@ -91,6 +143,40 @@ const StreamplaceVideoUpload: FC<Props> = ({
     }
   }, [handle]);
 
+  const handleFileChange = useCallback(async (picked: File | null) => {
+    const token = ++fileTokenRef.current;
+    setFile(picked);
+    setError(null);
+    setPreflight(null);
+    if (!picked) return;
+
+    // Cheap checks first, so an obviously wrong file is flagged instantly.
+    setPreflight(assessVideo(picked, MAX_VIDEO_BYTES));
+    const meta = await readVideoMetadata(picked);
+    if (token !== fileTokenRef.current) return;
+    setPreflight(
+      assessVideo(
+        { name: picked.name, size: picked.size, type: picked.type, ...meta },
+        MAX_VIDEO_BYTES
+      )
+    );
+  }, []);
+
+  const handleCancel = useCallback(() => abortRef.current?.abort(), []);
+
+  const handleSwitchAccount = useCallback(async () => {
+    try {
+      await session?.signOut();
+    } catch {
+      /* the local session is dropped either way */
+    }
+    setSession(null);
+    setFile(null);
+    setPreflight(null);
+    setError(null);
+    setStage("idle");
+  }, [session]);
+
   const linkToLesson = useCallback(
     async (atUri: string, durationSeconds?: number) => {
       if (!lessonId) return; // draft lesson — parent keeps the URI in state
@@ -133,7 +219,13 @@ const StreamplaceVideoUpload: FC<Props> = ({
       );
 
       // 2. TUS upload
-      await uploadFileWithTus(uploadUrl, uploadToken, file, setUploadPct);
+      await uploadFileWithTus(
+        uploadUrl,
+        uploadToken,
+        file,
+        setUploadPct,
+        abortRef.current.signal
+      );
 
       // 3. wait for processing
       setStage("processing");
@@ -160,14 +252,24 @@ const StreamplaceVideoUpload: FC<Props> = ({
       setStage("done");
       toast.success("Video publicado y vinculado a la lección");
     } catch (err: any) {
-      setError(err?.message || "Error durante la subida");
-      toast.error(err?.message || "Error durante la subida");
+      if (err instanceof UploadCancelledError) {
+        toast("Subida cancelada");
+      } else {
+        setError(err?.message || "Error durante la subida");
+        toast.error(err?.message || "Error durante la subida");
+      }
+      setUploadPct(0);
+      setProcessPct(0);
       setStage("ready");
     }
   }, [session, file, title, description, linkToLesson, onLinked]);
 
   const busy =
     stage === "uploading" || stage === "processing" || stage === "publishing";
+  // Once the record is being published, cancelling could leave it half-made.
+  const cancellable = stage === "uploading" || stage === "processing";
+  const blocked =
+    instructor === "denied" || (preflight?.errors.length ?? 0) > 0;
 
   // ─── Idle: connect with Bluesky ──────────────────────────────────────────
   if (stage === "idle") {
@@ -205,13 +307,48 @@ const StreamplaceVideoUpload: FC<Props> = ({
     <div className="mb-3 rounded border border-dashed border-gray-400 p-3">
       <label className={styles.label}>Subir video nuevo</label>
 
+      {instructor === "denied" && (
+        <div role="alert" className="mb-2 rounded bg-red-50 p-2 text-sm text-red-700">
+          <p>
+            Esta cuenta ({session?.sub}) no está autorizada como instructor, así
+            que el video no se podría vincular a la lección. Pide que agreguen
+            su DID a <code>STREAMPLACE_ALLOWED_STREAMS</code> o usa otra cuenta.
+          </p>
+          <button
+            type="button"
+            onClick={handleSwitchAccount}
+            className="mt-1 underline"
+          >
+            Usar otra cuenta
+          </button>
+        </div>
+      )}
+
       <input
         type="file"
         accept="video/mp4,video/*"
         disabled={busy}
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
         className="block w-full text-sm mb-2"
       />
+
+      {preflight && (
+        <div className="mb-2 text-sm" aria-live="polite">
+          {preflight.summary && (
+            <p className="text-gray-600">{preflight.summary}</p>
+          )}
+          {preflight.errors.map((message) => (
+            <p key={message} className="text-red-600">
+              ⛔ {message}
+            </p>
+          ))}
+          {preflight.warnings.map((message) => (
+            <p key={message} className="text-amber-600">
+              ⚠️ {message}
+            </p>
+          ))}
+        </div>
+      )}
 
       <input
         type="text"
@@ -251,14 +388,25 @@ const StreamplaceVideoUpload: FC<Props> = ({
       {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
 
       {stage !== "done" && (
-        <button
-          type="button"
-          disabled={!file || busy}
-          onClick={handleUpload}
-          className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-50"
-        >
-          {busy ? "Trabajando…" : "Subir y publicar"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={!file || busy || blocked}
+            onClick={handleUpload}
+            className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-50"
+          >
+            {busy ? "Trabajando…" : "Subir y publicar"}
+          </button>
+          {cancellable && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="px-3 py-1 border border-gray-400 rounded"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

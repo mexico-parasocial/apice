@@ -8,6 +8,11 @@ vi.mock("../../src/platform/db", () => ({
   },
 }));
 
+vi.mock("../../src/modules/push/push.service", () => ({
+  sendPushToUser: vi.fn(),
+}));
+
+import { sendPushToUser } from "../../src/modules/push/push.service";
 import { notify } from "../../src/modules/notifications/notifications.service";
 import { registerRealtime, ADMIN_ROOM } from "../../src/platform/realtime";
 import { prisma } from "../../src/platform/db";
@@ -22,6 +27,15 @@ beforeEach(() => {
 });
 
 describe("notify", () => {
+  it("also sends a phone push for a learner's inbox item, never for staff notices", async () => {
+    await notify({ audience: "user", userId: "u1", title: "Hola", message: "Mensaje" });
+    expect(sendPushToUser).toHaveBeenCalledWith("u1", { title: "Hola", body: "Mensaje" });
+
+    vi.mocked(sendPushToUser).mockClear();
+    await notify({ audience: "admin", title: "Nueva pregunta", message: "x" });
+    expect(sendPushToUser).not.toHaveBeenCalled();
+  });
+
   it("stores staff notices without a learner id and pushes to the admin room only", async () => {
     await notify({ audience: "admin", title: "New Review", message: "m" });
 

@@ -1,0 +1,113 @@
+name: apice-spaces-pilot
+
+# Separate project, network, bucket, ports and volumes. Never combine with
+# the legacy compose files using -f. The application runs on the host so its
+# loopback OAuth redirect and HTTP origin are identical in every browser.
+services:
+  minio:
+    image: ${PILOT_MINIO_IMAGE:-apice-pilot-minio:2025-10-15}
+    build:
+      context: .
+      dockerfile: minio.Dockerfile
+    command: server /data --address :9000
+    environment:
+      MINIO_ROOT_USER: apice-pilot-only
+      MINIO_ROOT_PASSWORD: apice-pilot-test-secret
+    ports: ["127.0.0.1:2595:9000"]
+    volumes: ["pds_bucket:/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 3s
+      retries: 30
+  bucket-init:
+    image: ${PILOT_MINIO_IMAGE:-apice-pilot-minio:2025-10-15}
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - mc alias set pilot http://minio:9000 apice-pilot-only apice-pilot-test-secret >/dev/null; mc mb --ignore-existing pilot/apice-pilot-pds
+  pds:
+    profiles: ["container-pds"]
+    image: apice-pilot-vlpds:e215170
+    build:
+      context: https://github.com/mexico-parasocial/vlpds.git#e215170d27d65b3360a8bd0904bf53a29c0c848b
+    command: ["--dev-mode", "--spaces", "--plc-mode", "unregistered", "--shards", "2", "--memory-budget-mb", "6144"]
+    environment:
+      VLPDS_PUBLIC_URL: http://127.0.0.1:2593
+      VLPDS_HANDLE_DOMAIN: pilot.test
+      VLPDS_S3_ENDPOINT: http://minio:9000
+      VLPDS_S3_BUCKET: apice-pilot-pds
+      VLPDS_PREFIX: apice-pilot-v1
+      VLPDS_S3_ACCESS_KEY: apice-pilot-only
+      VLPDS_S3_SECRET_KEY: apice-pilot-test-secret
+    ports: ["127.0.0.1:2593:2583"]
+    depends_on:
+      bucket-init: { condition: service_completed_successfully }
+  seaweed-master:
+    image: chrislusf/seaweedfs:4.42@sha256:f7cbc8bdbbf60a1aaba7d61784a3bdff3ec1e0657f6ad0b26d5b6ab2cd9d0dc6
+    command: master -ip=seaweed-master -ip.bind=0.0.0.0 -mdir=/data -volumeSizeLimitMB=1000
+    volumes: ["media_master:/data"]
+  seaweed-volume:
+    image: chrislusf/seaweedfs:4.42@sha256:f7cbc8bdbbf60a1aaba7d61784a3bdff3ec1e0657f6ad0b26d5b6ab2cd9d0dc6
+    command: volume -mserver=seaweed-master:9333 -ip=seaweed-volume -ip.bind=0.0.0.0 -dir=/data -max=5
+    volumes: ["media_volume:/data"]
+    depends_on: [seaweed-master]
+  seaweed-filer:
+    image: chrislusf/seaweedfs:4.42@sha256:f7cbc8bdbbf60a1aaba7d61784a3bdff3ec1e0657f6ad0b26d5b6ab2cd9d0dc6
+    command: filer -master=seaweed-master:9333 -ip=seaweed-filer -ip.bind=0.0.0.0
+    volumes: ["media_filer:/data", "./filer.toml:/etc/seaweedfs/filer.toml:ro"]
+    depends_on: [seaweed-volume]
+  seaweed-s3:
+    image: chrislusf/seaweedfs:4.42@sha256:f7cbc8bdbbf60a1aaba7d61784a3bdff3ec1e0657f6ad0b26d5b6ab2cd9d0dc6
+    entrypoint: ["/bin/sh", "/pilot/seaweedfs-s3-entrypoint.sh"]
+    environment:
+      SEAWEED_ACCESS_KEY: apice-pilot-media
+      SEAWEED_SECRET_KEY: apice-pilot-media-secret
+    volumes: ["../../../scripts/seaweedfs-s3-entrypoint.sh:/pilot/seaweedfs-s3-entrypoint.sh:ro"]
+    depends_on: [seaweed-filer]
+  media-init:
+    image: ${PILOT_MINIO_IMAGE:-apice-pilot-minio:2025-10-15}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for attempt in $$(seq 1 30); do
+          if mc alias set media http://seaweed-s3:8333 apice-pilot-media apice-pilot-media-secret >/dev/null 2>&1 && mc mb --ignore-existing media/apice-pilot-videos; then exit 0; fi
+          sleep 2
+        done
+        exit 1
+    depends_on: [seaweed-s3]
+  streamplace:
+    image: ${PILOT_STREAMPLACE_IMAGE:-apice-streamplace:arm64}
+    build:
+      context: ../../..
+      dockerfile: streamplace/Dockerfile
+      args:
+        STREAMPLACE_PACKAGE_FILE_ID: ${PILOT_STREAMPLACE_PACKAGE_ID:-789}
+    environment:
+      SP_HTTP_ADDR: 0.0.0.0:38093
+      SP_BROADCASTER_HOST: 127.0.0.1:38093
+      SP_SERVER_HOST: 127.0.0.1:38093
+      SP_DEV_PUBLIC_OAUTH: "true"
+      SP_WIDE_OPEN: "true"
+      SP_DB_URL: sqlite:///root/.streamplace/state.sqlite
+      SP_LOCAL_DB_URL: sqlite:///root/.streamplace/localdb.sqlite
+      SP_S3_ENDPOINT: http://seaweed-s3:8333
+      SP_S3_BUCKET: apice-pilot-videos
+      SP_S3_ACCESS_KEY_ID: apice-pilot-media
+      SP_S3_SECRET_ACCESS_KEY: apice-pilot-media-secret
+      SP_S3_REGION: us-east-1
+      SP_VOD_CONCURRENCY: 1
+      SP_RELAY_HOST: ws://host.docker.internal:2593
+    # Same public origin, with the pilot OAuth callback handled by media-server.
+    ports: ["127.0.0.1:38094:38093"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes: ["streamplace_state:/root/.streamplace"]
+    depends_on:
+      media-init: { condition: service_completed_successfully }
+
+volumes:
+  pds_bucket:
+  media_master:
+  media_volume:
+  media_filer:
+  streamplace_state:
