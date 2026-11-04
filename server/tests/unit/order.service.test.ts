@@ -59,7 +59,7 @@ describe("executeOrderTransaction", () => {
     });
     expect(prisma.notification.create).toHaveBeenCalledWith({
       data: {
-        userId: "user-1",
+        audience: "admin",
         title: "New Order",
         message: "You have a new order from Test Course",
       },

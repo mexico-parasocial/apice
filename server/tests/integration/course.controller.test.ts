@@ -20,7 +20,9 @@ vi.mock("../../utils/db", () => ({
       findMany: vi.fn(),
     },
     reviewReply: { create: vi.fn() },
-    notification: { create: vi.fn() },
+    notification: {
+      create: vi.fn(() => Promise.resolve({ id: "n1", audience: "admin", userId: null })),
+    },
     order: { count: vi.fn() },
   },
 }));

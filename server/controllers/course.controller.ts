@@ -10,6 +10,7 @@ import {
   syncCourseContent,
 } from "../services/course.service";
 import { redis } from "../utils/redis";
+import { notify } from "../services/notification.service";
 import { COURSE_CACHE_TTL_SECONDS, courseCacheKey } from "../utils/cache";
 import { Prisma } from "@prisma/client";
 import path from "path";
@@ -508,12 +509,10 @@ export const addQuestion = CatchAsyncError(
         },
       });
 
-      await prisma.notification.create({
-        data: {
-          userId: req.user?.id,
-          title: "New Question Received",
-          message: `You have a new question in ${lesson.title}`,
-        },
+      await notify({
+        audience: "admin",
+        title: "New Question Received",
+        message: `${req.user?.name ?? "A learner"} asked a question in ${lesson.title}`,
       });
 
       res.status(200).json({
@@ -581,12 +580,10 @@ export const addAnwser = CatchAsyncError(
       });
 
       if (req.user?.id === question.user.id) {
-        await prisma.notification.create({
-          data: {
-            userId: req.user?.id,
-            title: "New Question Reply Received",
-            message: `You have a new question reply in ${question.lesson.title}`,
-          },
+        await notify({
+          audience: "admin",
+          title: "New Question Reply Received",
+          message: `${req.user?.name ?? "A learner"} replied to their question in ${question.lesson.title}`,
         });
       } else {
         const data = {
@@ -682,12 +679,10 @@ export const addReview = CatchAsyncError(
       // here would serve a course with no curriculum and no reviews.
       await redis.del(courseCacheKey(courseId));
 
-      await prisma.notification.create({
-        data: {
-          userId,
-          title: "New Review Received",
-          message: `${req.user?.name} has given a review in ${course?.name}`,
-        },
+      await notify({
+        audience: "admin",
+        title: "New Review Received",
+        message: `${req.user?.name} has given a review in ${course?.name}`,
       });
 
       res.status(200).json({

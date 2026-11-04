@@ -1,4 +1,5 @@
 import { prisma } from "../utils/db";
+import { notify } from "./notification.service";
 import ErrorHandler from "../utils/ErrorHandler";
 import {
   computeLessonProgress,
@@ -186,12 +187,11 @@ export async function recordLessonProgress(
           where: { id: courseId },
           select: { name: true },
         });
-        await prisma.notification.create({
-          data: {
-            userId,
-            title: "¡Programa completado! 🎓",
-            message: `Felicidades — completaste "${course?.name ?? "el programa"}". Tu certificado y tu credencial ATProto están listos.`,
-          },
+        await notify({
+          audience: "user",
+          userId,
+          title: "¡Programa completado! 🎓",
+          message: `Felicidades — completaste "${course?.name ?? "el programa"}". Tu certificado y tu credencial ATProto están listos.`,
         });
       } catch {
         /* non-blocking */

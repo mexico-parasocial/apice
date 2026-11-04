@@ -7,9 +7,37 @@ import {
 import React, { FC, useEffect, useState } from "react";
 import { IoMdNotificationsOutline } from "react-icons/io";
 import socketIO from "socket.io-client";
+import Cookies from "js-cookie";
 import { format } from "timeago.js";
 const ENDPOINT = process.env.NEXT_PUBLIC_SOCKET_SERVER_URI || "";
-const socketId = socketIO(ENDPOINT, { transports: ["websocket"] });
+
+/**
+ * Short two-tone chime synthesised with Web Audio — no remote asset. (The
+ * sound used to be fetched from a third party's Cloudinary account.)
+ */
+function playChime() {
+  try {
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    const ctx = new Ctx();
+    [880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const start = ctx.currentTime + i * 0.12;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.25);
+    });
+    setTimeout(() => ctx.close(), 600);
+  } catch {
+    /* audio is a nicety; autoplay policies may block it */
+  }
+}
 
 type Props = {
   open?: boolean;
@@ -23,16 +51,6 @@ const DashboardHeader: FC<Props> = ({ open, setOpen }) => {
   const [updateNotificationStatus, { isSuccess }] =
     useUpdateNotificationStatusMutation();
   const [notifications, setNotifications] = useState<any>([]);
-  const [audio] = useState<any>(
-    typeof window !== "undefined" &&
-      new Audio(
-        "https://res.cloudinary.com/dkg6jv4l0/video/upload/v1716750964/notification_jvwqd0.mp3"
-      )
-  );
-
-  const playNotificationSound = () => {
-    audio.play();
-  };
 
   useEffect(() => {
     if (data) {
@@ -43,15 +61,25 @@ const DashboardHeader: FC<Props> = ({ open, setOpen }) => {
     if (isSuccess) {
       refetch();
     }
-    audio.load();
-  }, [data, isSuccess,audio]);
+  }, [data, isSuccess, refetch]);
 
+  // The server only lets a socket in with a valid access token, and only
+  // admins join the room staff notifications are pushed to. The auth
+  // callback re-reads the cookie on every (re)connect, so a rotated token is
+  // picked up without a page reload.
   useEffect(() => {
-    socketId.on("newNotification", (data) => {
-      refetch();
-      playNotificationSound();
+    const socket = socketIO(ENDPOINT, {
+      transports: ["websocket"],
+      auth: (cb) => cb({ token: Cookies.get("accessToken") ?? "" }),
     });
-  }, []);
+    socket.on("newNotification", () => {
+      refetch();
+      playChime();
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, [refetch]);
 
   const handleNotificationStatusChange = async (id: string) => {
     await updateNotificationStatus(id);

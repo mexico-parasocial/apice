@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import { prisma } from "../utils/db";
+import { publishNotification } from "./notification.service";
 
 // create new order
 export const newOrder = CatchAsyncError(async (data: any, res: Response) => {
@@ -54,7 +55,7 @@ export async function executeOrderTransaction(
   payment_info: any,
   courseName: string
 ) {
-  return prisma.$transaction([
+  const result = await prisma.$transaction([
     prisma.order.create({
       data: {
         courseId,
@@ -74,7 +75,7 @@ export async function executeOrderTransaction(
     }),
     prisma.notification.create({
       data: {
-        userId,
+        audience: "admin",
         title: "New Order",
         message: `You have a new order from ${courseName}`,
       },
@@ -84,4 +85,10 @@ export async function executeOrderTransaction(
       data: { purchased: { increment: 1 } },
     }),
   ]);
+
+  // Push only after commit, so admins are never told about an order that
+  // rolled back.
+  const notification = result[2];
+  if (notification) publishNotification(notification);
+  return result;
 }

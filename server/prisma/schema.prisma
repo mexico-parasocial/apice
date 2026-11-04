@@ -327,12 +327,16 @@ model Notification {
   title     String
   message   String
   status    String   @default("unread")
+  // "admin": staff activity feed (new question, review, order).
+  // "user":  a learner's inbox; userId null means an announcement to all.
+  audience  String   @default("admin")
   userId    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
+  @@index([audience])
   @@index([createdAt])
 }
 

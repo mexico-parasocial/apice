@@ -15,7 +15,9 @@ export const getMyNotifications = CatchAsyncError(
       }
 
       const notifications = await prisma.notification.findMany({
-        where: { OR: [{ userId }, { userId: null }] },
+        // A learner's inbox: their own notices plus learner-wide
+        // announcements. Staff activity (audience "admin") never shows here.
+        where: { audience: "user", OR: [{ userId }, { userId: null }] },
         orderBy: { createdAt: "desc" },
         take: 50,
       });
@@ -42,6 +44,7 @@ export const getNotifications = CatchAsyncError(
 
       // Bounded: the admin grid renders a page, not the table's history.
       const notifications = await prisma.notification.findMany({
+        where: { audience: "admin" },
         orderBy: {
           createdAt: "desc",
         },
@@ -49,7 +52,7 @@ export const getNotifications = CatchAsyncError(
         skip: (page - 1) * limit,
       });
 
-      res.status(201).json({
+      res.status(200).json({
         success: true,
         notifications,
       });
@@ -79,7 +82,7 @@ export const updateNotification = CatchAsyncError(
 
       // Returns the one changed row. This used to re-list the entire
       // notifications table after every single mark-as-read.
-      res.status(201).json({
+      res.status(200).json({
         success: true,
         notification: updated,
       });
