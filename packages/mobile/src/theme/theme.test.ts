@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { baseTheme } from "../theme";
+import { baseTheme } from ".";
 
 /**
  * Design tokens are a public contract: components across two packages style

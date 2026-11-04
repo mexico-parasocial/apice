@@ -1,0 +1,75 @@
+import { prisma } from "../../platform/db";
+import { publishNotification } from "../notifications/notifications.service";
+
+// Get All Orders (paginated)
+export const getAllOrdersService = async (page = 1, limit = 50) => {
+  const skip = (page - 1) * limit;
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.order.count(),
+  ]);
+
+  return {
+    orders,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
+};
+
+/**
+ * Execute the order creation as an atomic Prisma transaction.
+ * This ensures that a user is never charged without an Enrollment
+ * being created for the course.
+ */
+export async function executeOrderTransaction(
+  courseId: string,
+  userId: string,
+  payment_info: any,
+  courseName: string
+) {
+  const result = await prisma.$transaction([
+    prisma.order.create({
+      data: {
+        courseId,
+        userId,
+        payment_info: (payment_info ?? {}) as any,
+      },
+    }),
+    prisma.enrollment.upsert({
+      where: { userId_courseId: { userId, courseId } },
+      update: {},
+      create: {
+        userId,
+        courseId,
+        enrolledAt: new Date(),
+        lastAccessedAt: new Date(),
+      },
+    }),
+    prisma.notification.create({
+      data: {
+        audience: "admin",
+        title: "New Order",
+        message: `You have a new order from ${courseName}`,
+      },
+    }),
+    prisma.course.update({
+      where: { id: courseId },
+      data: { purchased: { increment: 1 } },
+    }),
+  ]);
+
+  // Push only after commit, so admins are never told about an order that
+  // rolled back.
+  const notification = result[2];
+  if (notification) publishNotification(notification);
+  return result;
+}
