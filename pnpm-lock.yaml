@@ -140,13 +140,10 @@ importers:
         version: 3.0.6
 
   packages/lexicons:
-    devDependencies:
+    dependencies:
       '@atproto/lexicon':
         specifier: ^0.4.9
         version: 0.4.14
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.3
 
   packages/mobile:
     dependencies:

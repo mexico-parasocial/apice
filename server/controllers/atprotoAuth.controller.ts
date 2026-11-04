@@ -14,6 +14,7 @@ import {
   startAuthorization,
 } from "../services/atprotoOAuth.service";
 import { refreshTokenExpireSeconds, signTokens } from "../utils/jwt";
+import { requeueSkippedForUser } from "../services/credentials.service";
 
 const startSchema = z.object({
   handle: z
@@ -118,6 +119,9 @@ export const atprotoAuthCallback = CatchAsyncError(
           data: { blueskyHandle: handle },
         });
       }
+
+      // A fresh OAuth session may unblock credentials skipped for lack of one.
+      await requeueSkippedForUser(user.id).catch(() => 0);
 
       const { accessToken, refreshToken } = await signTokens(user.id);
       await redis.set(

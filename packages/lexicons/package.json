@@ -1,25 +1,19 @@
 {
   "name": "@apice/lexicons",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
-  "main": "./src/index.js",
-  "types": "./src/index.ts",
+  "description": "app.civic.* ATProto lexicons \u2014 the open MOOC-on-ATProto standard",
+  "main": "./index.js",
+  "types": "./index.d.ts",
   "files": [
-    "src"
+    "index.js",
+    "index.d.ts",
+    "schemas"
   ],
-  "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "require": "./src/index.js",
-      "default": "./src/index.js"
-    }
-  },
   "scripts": {
-    "codegen": "npx lex gen-ts-obj ../../lexicons/*.json > ./src/lexicons.ts && node -e \"let s=require('fs').readFileSync('./src/lexicons.ts','utf8').trimEnd(); if(s.endsWith(']')) s=s.slice(0,-1)+'] as const\\n\\nexport type CivicLexiconId = typeof lexicons[number][\\'id\\'];\\n'; require('fs').writeFileSync('./src/lexicons.ts',s)\"",
-    "typecheck": "tsc --noEmit"
+    "test": "node test.js"
   },
-  "devDependencies": {
-    "@atproto/lexicon": "^0.4.9",
-    "typescript": "^5.8.3"
+  "dependencies": {
+    "@atproto/lexicon": "^0.4.9"
   }
 }

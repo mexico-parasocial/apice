@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -14,13 +15,10 @@ import {
   atoms as a,
   ContentContainer,
   downloadCertificate,
-  makeIM8AuthHooks,
-  makePasswordAuthHooks,
-  makeCertificateHooks,
   useTheme,
   CertificateList,
 } from "@apice/mobile";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import {
   useIM8Login,
@@ -42,7 +40,7 @@ const DEMO_ACCOUNT = {
 
 export function ProfileScreen() {
   const theme = useTheme();
-  const { token, user, login, logout } = useAuth();
+  const { token, user, login, logout, updateUser } = useAuth();
   const [identifier, setIdentifier] = useState("demo.im8");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -81,6 +79,20 @@ export function ProfileScreen() {
     enabled: !!token,
   });
   const notifications = notificationsData?.notifications ?? [];
+
+  const { mutate: setConsent, isPending: isSavingConsent } = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const res = await api.put("/me/credentials-consent", { enabled });
+      return res.data as { user: any };
+    },
+    onSuccess: (data) => updateUser(data.user),
+    onError: (err: any) => {
+      alert(
+        err?.response?.data?.message ||
+          "No se pudo guardar tu preferencia. Inténtalo de nuevo."
+      );
+    },
+  });
 
   if (!user) {
     return (
@@ -125,6 +137,30 @@ export function ProfileScreen() {
           <TouchableOpacity style={styles.logoutButton} onPress={logout}>
             <Text style={styles.logoutText}>Cerrar sesión</Text>
           </TouchableOpacity>
+        </View>
+
+        <AlfText variant="title" color="primary_800" style={styles.sectionTitle}>
+          Credenciales en Bluesky
+        </AlfText>
+        <View style={[theme.atoms.bg_contrast_25, styles.card]}>
+          <View style={styles.consentRow}>
+            <AlfText variant="body" style={a.flex_1}>
+              Publicar mis logros en mi cuenta de Bluesky
+            </AlfText>
+            <Switch
+              value={!!user.credentialsConsent}
+              disabled={isSavingConsent}
+              onValueChange={(enabled) => setConsent(enabled)}
+              accessibilityLabel="Publicar mis logros en mi cuenta de Bluesky"
+            />
+          </View>
+          <AlfText variant="caption" color="contrast_600" style={a.mt_sm}>
+            Si lo activas, cada lección y programa que completes se guarda como
+            un registro en tu cuenta de Bluesky. Esos registros son públicos:
+            cualquier persona puede ver qué cursos completaste, y copias
+            pueden quedar en la red aunque después los borres. Puedes
+            desactivarlo cuando quieras; lo ya publicado queda en tu cuenta.
+          </AlfText>
         </View>
 
         <AlfText variant="title" color="primary_800" style={styles.sectionTitle}>
@@ -195,6 +231,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
+  },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   logoutButton: {
     marginTop: 12,

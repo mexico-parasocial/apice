@@ -26,6 +26,10 @@ import cloudinary from "cloudinary";
 import { z } from "zod";
 import { NextFunction, Request, Response } from "express";
 import { logger } from "../utils/logger";
+import {
+  cancelPendingCredentials,
+  enqueueAllEarnedCredentials,
+} from "../services/credentials.service";
 
 // register user
 //
@@ -343,6 +347,42 @@ export const getUserInfo = CatchAsyncError(
       // Only infrastructure failures (Redis, the database) land here.
       return next(new ErrorHandler(error.message, 500));
     }
+  }
+);
+
+const credentialsConsentSchema = z.object({ enabled: z.boolean() });
+
+/**
+ * PUT /api/v1/me/credentials-consent  { enabled }
+ *
+ * Opt in or out of publishing app.civic.progress records to the learner's
+ * public ATProto repo. Opting in queues every credential already earned;
+ * opting out cancels anything still queued. Records already published stay
+ * in the learner's repo — they own it and can delete them there.
+ */
+export const updateCredentialsConsent = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const parsed = credentialsConsentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return next(new ErrorHandler("enabled must be a boolean", 400));
+    }
+    const userId = req.user!.id;
+    const { enabled } = parsed.data;
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        credentialsConsent: enabled,
+        credentialsConsentAt: enabled ? new Date() : null,
+      },
+    });
+    await redis.set(userId, JSON.stringify(user), "EX", SESSION_CACHE_TTL_SECONDS);
+
+    const queued = enabled
+      ? await enqueueAllEarnedCredentials(userId)
+      : (await cancelPendingCredentials(userId), 0);
+
+    res.status(200).json({ success: true, user, queued });
   }
 );
 

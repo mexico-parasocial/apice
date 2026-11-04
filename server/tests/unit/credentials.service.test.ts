@@ -15,6 +15,14 @@ vi.mock("../../utils/db", () => ({
     user: { findUnique: vi.fn() },
     course: { findUnique: vi.fn() },
     enrollmentLesson: { findMany: vi.fn() },
+    enrollment: { findMany: vi.fn() },
+    credentialPublication: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
   },
 }));
 
@@ -23,6 +31,8 @@ vi.mock("../../services/atprotoOAuth.service", () => ({
 }));
 
 import {
+  drainCredentialOutbox,
+  enqueueCredential,
   publishCourseCredential,
   publishLessonCredential,
 } from "../../services/credentials.service";
@@ -31,9 +41,9 @@ import { restoreSession } from "../../services/atprotoOAuth.service";
 
 const DID = "did:plc:learner1";
 const COURSE_URI = "at://did:plc:instructor1/app.civic.course/abc";
-const COURSE_CID = "bafy-course";
+const COURSE_CID = "bafyreib2rxk3rybk3aobmv5cjuql3bm2twh4jo5uxgf5y5xhj4bvb6vgxa";
 const LESSON_URI = "at://did:plc:instructor1/app.civic.lesson/xyz";
-const LESSON_CID = "bafy-lesson";
+const LESSON_CID = "bafyreie5737gdxlw5i64vzichcalba3z2v5n6icifvx5xytvske7mr3hpm";
 
 function mockHappyPath() {
   (prisma.user.findUnique as any).mockResolvedValue({ blueskyDid: DID });
@@ -48,15 +58,15 @@ function mockHappyPath() {
 describe("credentials.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    putRecordMock.mockResolvedValue({ uri: "at://x", cid: "c" });
+    putRecordMock.mockResolvedValue({ data: { uri: "at://x", cid: "c" } });
   });
 
   it("writes a lesson progress record to the learner's repo", async () => {
     mockHappyPath();
 
-    const ok = await publishLessonCredential("user-1", "course-1", "lesson-1");
+    const out = await publishLessonCredential("user-1", "course-1", "lesson-1");
 
-    expect(ok).toBe(true);
+    expect(out).toEqual({ status: "published", uri: "at://x", cid: "c" });
     expect(putRecordMock).toHaveBeenCalledTimes(1);
     const call = putRecordMock.mock.calls[0][0];
     expect(call.repo).toBe(DID);
@@ -87,9 +97,9 @@ describe("credentials.service", () => {
   it("writes a course-level record without lessonRef", async () => {
     mockHappyPath();
 
-    const ok = await publishCourseCredential("user-1", "course-1");
+    const out = await publishCourseCredential("user-1", "course-1");
 
-    expect(ok).toBe(true);
+    expect(out.status).toBe("published");
     const call = putRecordMock.mock.calls[0][0];
     expect(call.record.lessonRef).toBeUndefined();
     expect(call.record.courseRef.uri).toBe(COURSE_URI);
@@ -98,9 +108,9 @@ describe("credentials.service", () => {
   it("skips when the learner has no Bluesky DID", async () => {
     (prisma.user.findUnique as any).mockResolvedValue({ blueskyDid: null });
 
-    const ok = await publishLessonCredential("user-1", "course-1", "lesson-1");
+    const out = await publishLessonCredential("user-1", "course-1", "lesson-1");
 
-    expect(ok).toBe(false);
+    expect(out.status).toBe("skipped");
     expect(putRecordMock).not.toHaveBeenCalled();
   });
 
@@ -112,9 +122,9 @@ describe("credentials.service", () => {
       lessonRefs: [],
     });
 
-    const ok = await publishLessonCredential("user-1", "course-1", "lesson-1");
+    const out = await publishLessonCredential("user-1", "course-1", "lesson-1");
 
-    expect(ok).toBe(false);
+    expect(out.status).toBe("skipped");
     expect(putRecordMock).not.toHaveBeenCalled();
   });
 
@@ -127,9 +137,9 @@ describe("credentials.service", () => {
     });
     (restoreSession as any).mockRejectedValue(new Error("no session"));
 
-    const ok = await publishCourseCredential("user-1", "course-1");
+    const out = await publishCourseCredential("user-1", "course-1");
 
-    expect(ok).toBe(false);
+    expect(out.status).toBe("skipped");
     expect(putRecordMock).not.toHaveBeenCalled();
   });
 
@@ -142,9 +152,9 @@ describe("credentials.service", () => {
     });
     (restoreSession as any).mockResolvedValue({ sub: "did:plc:someone-else" });
 
-    const ok = await publishCourseCredential("user-1", "course-1");
+    const out = await publishCourseCredential("user-1", "course-1");
 
-    expect(ok).toBe(false);
+    expect(out.status).toBe("skipped");
     expect(putRecordMock).not.toHaveBeenCalled();
   });
 
@@ -157,18 +167,106 @@ describe("credentials.service", () => {
     });
     (restoreSession as any).mockResolvedValue({ sub: DID });
 
-    const ok = await publishLessonCredential("user-1", "course-1", "lesson-1");
+    const out = await publishLessonCredential("user-1", "course-1", "lesson-1");
 
-    expect(ok).toBe(false);
+    expect(out.status).toBe("skipped");
     expect(putRecordMock).not.toHaveBeenCalled();
   });
 
-  it("returns false instead of throwing when putRecord fails", async () => {
+  it("reports a retryable failure instead of throwing when putRecord fails", async () => {
     mockHappyPath();
     putRecordMock.mockRejectedValue(new Error("PDS unreachable"));
 
-    const ok = await publishLessonCredential("user-1", "course-1", "lesson-1");
+    const out = await publishLessonCredential("user-1", "course-1", "lesson-1");
 
-    expect(ok).toBe(false);
+    expect(out).toEqual({ status: "failed", error: "PDS unreachable" });
+  });
+
+  it("validates the record against the app.civic.progress lexicon before writing", async () => {
+    mockHappyPath();
+    (prisma.course.findUnique as any).mockResolvedValue({
+      atprotoUri: "not-an-at-uri",
+      atprotoCid: COURSE_CID,
+      lessonRefs: [],
+    });
+
+    const out = await publishCourseCredential("user-1", "course-1");
+
+    expect(out.status).toBe("skipped");
+    expect(putRecordMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("credential outbox", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    putRecordMock.mockResolvedValue({ data: { uri: "at://x", cid: "c" } });
+    (prisma.credentialPublication.updateMany as any).mockResolvedValue({ count: 1 });
+  });
+
+  it("queues nothing without the learner's consent", async () => {
+    (prisma.user.findUnique as any).mockResolvedValue({ credentialsConsent: false });
+
+    expect(await enqueueCredential("user-1", "course-1", "lesson-1")).toBe(false);
+    expect(prisma.credentialPublication.upsert).not.toHaveBeenCalled();
+  });
+
+  it("queues with consent, keyed per learner × course × lesson", async () => {
+    (prisma.user.findUnique as any).mockResolvedValue({ credentialsConsent: true });
+    (prisma.credentialPublication.findUnique as any).mockResolvedValue(null);
+
+    expect(await enqueueCredential("user-1", "course-1", "lesson-1")).toBe(true);
+    expect((prisma.credentialPublication.upsert as any).mock.calls[0][0].where).toEqual({
+      key: "user-1:course-1:lesson-1",
+    });
+  });
+
+  it("marks a row published with the record's uri", async () => {
+    mockHappyPath();
+    (prisma.credentialPublication.findMany as any).mockResolvedValue([
+      { id: "p1", userId: "user-1", courseId: "course-1", lessonId: "lesson-1", attempts: 0 },
+    ]);
+
+    await drainCredentialOutbox();
+
+    const update = (prisma.credentialPublication.update as any).mock.calls[0][0];
+    expect(update.data).toMatchObject({ status: "published", uri: "at://x", cid: "c" });
+  });
+
+  it("keeps a failed row pending with backoff, then gives up after max attempts", async () => {
+    mockHappyPath();
+    putRecordMock.mockRejectedValue(new Error("PDS unreachable"));
+    (prisma.credentialPublication.findMany as any).mockResolvedValue([
+      { id: "p1", userId: "user-1", courseId: "course-1", lessonId: null, attempts: 0 },
+    ]);
+
+    await drainCredentialOutbox();
+    let data = (prisma.credentialPublication.update as any).mock.calls[0][0].data;
+    expect(data.status).toBe("pending");
+    expect(data.attempts).toBe(1);
+    expect(data.nextAttemptAt.getTime()).toBeGreaterThan(Date.now());
+
+    vi.clearAllMocks();
+    (prisma.credentialPublication.updateMany as any).mockResolvedValue({ count: 1 });
+    mockHappyPath();
+    putRecordMock.mockRejectedValue(new Error("PDS unreachable"));
+    (prisma.credentialPublication.findMany as any).mockResolvedValue([
+      { id: "p1", userId: "user-1", courseId: "course-1", lessonId: null, attempts: 7 },
+    ]);
+    await drainCredentialOutbox();
+    data = (prisma.credentialPublication.update as any).mock.calls[0][0].data;
+    expect(data.status).toBe("failed");
+  });
+
+  it("skips a row another instance already claimed", async () => {
+    (prisma.credentialPublication.findMany as any).mockResolvedValue([
+      { id: "p1", userId: "user-1", courseId: "course-1", lessonId: null, attempts: 0 },
+    ]);
+    (prisma.credentialPublication.updateMany as any)
+      .mockResolvedValueOnce({ count: 0 }) // stale-processing reset
+      .mockResolvedValueOnce({ count: 0 }); // claim lost
+
+    expect(await drainCredentialOutbox()).toBe(0);
+    expect(putRecordMock).not.toHaveBeenCalled();
   });
 });

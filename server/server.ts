@@ -6,6 +6,10 @@ import { app } from "./app";
 import { logger } from "./utils/logger";
 import { prisma } from "./utils/db";
 import { redis } from "./utils/redis";
+import {
+  startCredentialOutbox,
+  stopCredentialOutbox,
+} from "./services/credentials.service";
 require("dotenv").config();
 const server = http.createServer(app);
 const log = logger.child({ subsystem: "server" });
@@ -24,6 +28,8 @@ const io = initSocketServer(server);
 server.listen(process.env.PORT, () => {
     log.info({ port: process.env.PORT }, "server listening");
     connectDB();
+    // Publishes queued app.civic.progress credentials (with retry/backoff).
+    startCredentialOutbox();
 });
 
 /**
@@ -48,6 +54,7 @@ async function shutdown(signal: string) {
   forceExit.unref();
 
   try {
+    stopCredentialOutbox();
     io.close();
     server.close();
     await prisma.$disconnect();

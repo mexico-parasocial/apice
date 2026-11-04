@@ -26,9 +26,10 @@ vi.mock("../../utils/jwt", async (importOriginal) => ({
   revokeAllRefreshTokens: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock("../../utils/logger", () => ({
-  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("../../utils/logger", () => {
+  const l = { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), fatal: vi.fn() };
+  return { logger: l, log: () => l };
+});
 
 // Auth is not under test here: every request is an authenticated admin.
 vi.mock("../../middleware/auth", () => ({

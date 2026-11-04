@@ -9,10 +9,12 @@
  * Run (dev):   pnpm worker:indexer
  * Run (prod):  node build/workers/jetstreamIndexer.js
  */
-import { Lexicons } from "@atproto/lexicon";
-import { lexicons as civicLexicons } from "@apice/lexicons";
+import { createCivicValidator } from "@apice/lexicons";
 import { prisma } from "../utils/db";
 import { redis } from "../utils/redis";
+import { log } from "../utils/logger";
+
+const indexerLog = log("indexer");
 
 const JETSTREAM_URL =
   process.env.JETSTREAM_URL || "wss://jetstream1.us-east.bsky.network";
@@ -28,10 +30,9 @@ const COLLECTIONS = [
   "app.civic.progress",
 ];
 
-const lex = new Lexicons();
-for (const doc of civicLexicons) {
-  lex.add(doc as any);
-}
+// Includes com.atproto.repo.strongRef: without it every record carrying a
+// ref (course, lesson, progress) failed validation and was dropped.
+const lex = createCivicValidator();
 
 interface CommitEvent {
   kind: "commit";
@@ -80,8 +81,9 @@ async function handleEvent(event: CommitEvent): Promise<void> {
   try {
     lex.assertValidRecord(commit.collection, commit.record);
   } catch (error: any) {
-    console.warn(
-      `[indexer] invalid ${commit.collection} from ${did}: ${error?.message}`
+    indexerLog.warn(
+      { collection: commit.collection, did, err: error?.message },
+      "invalid record dropped"
     );
     return;
   }
@@ -126,7 +128,7 @@ async function run(): Promise<void> {
   for (;;) {
     const cursor = await loadCursor();
     const url = buildSubscribeUrl(cursor);
-    console.log(`[indexer] connecting to ${url}`);
+    indexerLog.info({ url: String(url) }, "connecting");
 
     await new Promise<void>((resolve) => {
       const ws = new WebSocket(url);
@@ -136,7 +138,7 @@ async function run(): Promise<void> {
 
       ws.onopen = () => {
         attempt = 0;
-        console.log("[indexer] connected");
+        indexerLog.info("connected");
       };
 
       ws.onmessage = (msg) => {
@@ -144,7 +146,7 @@ async function run(): Promise<void> {
           const event = JSON.parse(String(msg.data));
           if (event?.kind === "commit") {
             void handleEvent(event as CommitEvent).catch((error) => {
-              console.error("[indexer] event error:", error?.message);
+              indexerLog.error({ err: error?.message }, "event error");
             });
           }
         } catch {
@@ -153,7 +155,7 @@ async function run(): Promise<void> {
       };
 
       ws.onerror = () => {
-        console.error("[indexer] websocket error");
+        indexerLog.error("websocket error");
       };
 
       ws.onclose = () => {
@@ -168,13 +170,13 @@ async function run(): Promise<void> {
       RECONNECT_BASE_MS * Math.pow(2, attempt),
       RECONNECT_MAX_MS
     );
-    console.log(`[indexer] disconnected; reconnecting in ${backoff}ms`);
+    indexerLog.warn({ backoffMs: backoff }, "disconnected; reconnecting");
     await new Promise((resolve) => setTimeout(resolve, backoff));
   }
 }
 
 async function shutdown() {
-  console.log("[indexer] shutting down");
+  indexerLog.info("shutting down");
   await flushCursor().catch(() => {});
   await prisma.$disconnect();
   process.exit(0);
@@ -184,7 +186,7 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 run().catch(async (error) => {
-  console.error("[indexer] fatal:", error);
+  indexerLog.fatal({ err: error }, "fatal");
   await prisma.$disconnect();
   process.exit(1);
 });

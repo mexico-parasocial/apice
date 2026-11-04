@@ -8,6 +8,7 @@ import {
   logoutUser,
   registrationUser,
   updatePassword,
+  updateCredentialsConsent,
   updateProfilePicture,
   updateUserInfo,
   updateUserRole,
@@ -26,6 +27,8 @@ userRouter.get("/logout",isAutheticated, logoutUser);
 userRouter.get("/me", isAutheticated, getUserInfo);
 
 userRouter.put("/update-user-info",isAutheticated, updateUserInfo);
+
+userRouter.put("/me/credentials-consent", isAutheticated, updateCredentialsConsent);
 
 userRouter.put("/update-user-password", isAutheticated, updatePassword);
 

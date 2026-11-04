@@ -18,6 +18,8 @@ interface AuthContextValue {
     user: any
   ) => Promise<void>;
   logout: () => Promise<void>;
+  /** Replace the stored user (e.g. after a profile/settings update). */
+  updateUser: (user: any) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -93,8 +95,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_KEY, USER_KEY]);
   };
 
+  const updateUser = async (nextUser: any) => {
+    setUser(nextUser);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ token, user, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{ token, user, isLoading, login, logout, updateUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

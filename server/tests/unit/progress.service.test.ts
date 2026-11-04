@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../../services/credentials.service", () => ({
-  publishLessonCredential: vi.fn().mockResolvedValue(false),
-  publishCourseCredential: vi.fn().mockResolvedValue(false),
-  publishCredentialsOnCourseComplete: vi.fn().mockResolvedValue(undefined),
+  enqueueCredential: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("../../utils/db", () => ({

@@ -33,9 +33,10 @@ vi.mock("../../utils/sendMail", () => ({
   }),
 }));
 
-vi.mock("../../utils/logger", () => ({
-  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("../../utils/logger", () => {
+  const l = { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), fatal: vi.fn() };
+  return { logger: l, log: () => l };
+});
 
 import userRouter from "../../routes/user.route";
 import { ErrorMiddleware } from "../../middleware/error";

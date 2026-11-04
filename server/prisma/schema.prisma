@@ -24,28 +24,33 @@ model INEVerification {
 }
 
 model User {
-  id                   String             @id @default(uuid())
-  name                 String
-  email                String             @unique
-  password             String
-  avatar               Json?
-  role                 String             @default("user")
-  isVerified           Boolean            @default(false)
-  stripeCustomerId     String?
-  blueskyDid           String?            @unique
-  blueskyHandle        String?
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  enrollments          Enrollment[]
-  orders               Order[]
-  reviews              Review[]
-  questions            Question[]
-  answers              Answer[]
-  reviewReplies        ReviewReply[]
-  EnrollmentLesson     EnrollmentLesson[]
-  INEVerification      INEVerification?
-  certificates         Certificate[]
-  videoViews           VideoView[]
+  id                     String                  @id @default(uuid())
+  name                   String
+  email                  String                  @unique
+  password               String
+  avatar                 Json?
+  role                   String                  @default("user")
+  isVerified             Boolean                 @default(false)
+  stripeCustomerId       String?
+  blueskyDid             String?                 @unique
+  blueskyHandle          String?
+  // Opt-in to publishing app.civic.progress records to the learner's public
+  // ATProto repo. Off by default: those records are public and permanent.
+  credentialsConsent     Boolean                 @default(false)
+  credentialsConsentAt   DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  enrollments            Enrollment[]
+  orders                 Order[]
+  reviews                Review[]
+  questions              Question[]
+  answers                Answer[]
+  reviewReplies          ReviewReply[]
+  EnrollmentLesson       EnrollmentLesson[]
+  INEVerification        INEVerification?
+  certificates           Certificate[]
+  videoViews             VideoView[]
+  credentialPublications CredentialPublication[]
 
   @@index([blueskyDid])
 }
@@ -117,12 +122,12 @@ model CourseLesson {
 }
 
 model LessonRef {
-  id       String  @id @default(uuid())
+  id       String @id @default(uuid())
   courseId String
-  course   Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessonId String
-  uri      String  // at:// URI of the lesson record on the instructor's PDS
-  cid      String  // CID of the lesson record
+  uri      String // at:// URI of the lesson record on the instructor's PDS
+  cid      String // CID of the lesson record
 
   @@unique([courseId, lessonId])
   @@index([courseId])
@@ -139,8 +144,6 @@ model VideoView {
   course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   provider    String
   playbackUrl String
-  ip          String?
-  userAgent   String?
   createdAt   DateTime     @default(now())
 
   @@index([userId])
@@ -153,7 +156,7 @@ model Quiz {
   id        String       @id @default(uuid())
   lessonId  String       @unique
   lesson    CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  questions Json[]       // { text: string, options: string[], correctIndex: number }
+  questions Json[] // { text: string, options: string[], correctIndex: number }
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -254,19 +257,19 @@ model Enrollment {
 }
 
 model EnrollmentLesson {
-  id             String       @id @default(uuid())
-  enrollmentId   String
-  enrollment     Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lessonId       String
-  lesson         CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  completed      Boolean      @default(false)
-  watchedSeconds Int          @default(0)
-  completedAt    DateTime?
+  id                String       @id @default(uuid())
+  enrollmentId      String
+  enrollment        Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId          String
+  lesson            CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completed         Boolean      @default(false)
+  watchedSeconds    Int          @default(0)
+  completedAt       DateTime?
   playbackTelemetry Json? // { startupMs, stallCount, errorCount } per lesson
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   @@unique([userId, lessonId])
   @@index([enrollmentId])
@@ -292,6 +295,30 @@ model Certificate {
 // Orders are financial records: they outlive the user (who is unlinked, not
 // erased with them) and block deleting the course they paid for, since the
 // course is what says what was bought and at what price.
+// Outbox for app.civic.progress records (see services/credentials.service.ts).
+// One row per learner × course × lesson ("course" for the course-level record).
+model CredentialPublication {
+  id            String    @id @default(uuid())
+  key           String    @unique // `${userId}:${courseId}:${lessonId ?? "course"}`
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId      String
+  lessonId      String?
+  status        String    @default("pending") // pending | processing | published | skipped | failed
+  attempts      Int       @default(0)
+  lastError     String?
+  uri           String?
+  cid           String?
+  nextAttemptAt DateTime  @default(now())
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([userId])
+  @@index([courseId])
+}
+
 model Order {
   id           String   @id @default(uuid())
   courseId     String

@@ -5,7 +5,7 @@
   "defs": {
     "main": {
       "type": "record",
-      "key": "tid",
+      "key": "any",
       "record": {
         "type": "object",
         "required": [
@@ -36,7 +36,8 @@
             "maximum": 100
           }
         }
-      }
+      },
+      "description": "Record key is deterministic (derived from the course/lesson refs) so re-publishing a credential overwrites it instead of duplicating it."
     }
   }
 }

@@ -5,10 +5,10 @@ import {
   computeLessonProgress,
   summarizeCourseProgress,
 } from "../utils/courseProgress";
-import {
-  publishCredentialsOnCourseComplete,
-  publishLessonCredential,
-} from "./credentials.service";
+import { enqueueCredential } from "./credentials.service";
+import { log } from "../utils/logger";
+
+const progressLog = log("progress");
 
 export interface PlaybackTelemetry {
   startupMs?: number;
@@ -171,14 +171,18 @@ export async function recordLessonProgress(
     });
   }
 
-  // Portable credentials: publish app.civic.progress records to the learner's
-  // own PDS. Fire-and-forget — never blocks the request path.
+  // Portable credentials go through the outbox (credentials.service), which
+  // publishes only with the learner's consent and retries on PDS failures.
+  // Enqueueing is a DB write; a failure must not fail the progress write.
   if (justCompleted) {
-    void publishLessonCredential(userId, courseId, lessonId).catch(() => {});
+    void enqueueCredential(userId, courseId, lessonId).catch((err) =>
+      progressLog.error({ err, userId, lessonId }, "enqueue lesson credential failed")
+    );
   }
   if (courseJustCompleted) {
-    // Fan-out covers every completed lesson plus the course-level record.
-    void publishCredentialsOnCourseComplete(userId, courseId).catch(() => {});
+    void enqueueCredential(userId, courseId).catch((err) =>
+      progressLog.error({ err, userId, courseId }, "enqueue course credential failed")
+    );
 
     // Completion notification for the learner (fire-and-forget).
     void (async () => {
@@ -191,7 +195,7 @@ export async function recordLessonProgress(
           audience: "user",
           userId,
           title: "¡Programa completado! 🎓",
-          message: `Felicidades — completaste "${course?.name ?? "el programa"}". Tu certificado y tu credencial ATProto están listos.`,
+          message: `Felicidades — completaste "${course?.name ?? "el programa"}". Tu certificado está listo.`,
         });
       } catch {
         /* non-blocking */

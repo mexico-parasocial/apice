@@ -6,7 +6,6 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "@apice/lexicons": ["../../packages/lexicons/src/index.ts"],
       "@atproto/oauth-client-node": [
         "./node_modules/@atproto/oauth-client-node/dist/index.d.ts"
       ],

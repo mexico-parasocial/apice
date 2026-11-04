@@ -24,8 +24,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck lexicons
-        run: pnpm --filter @apice/lexicons typecheck
+      - name: Validate lexicons
+        run: pnpm --filter @apice/lexicons test
 
       - name: Typecheck server
         run: pnpm --filter server typecheck

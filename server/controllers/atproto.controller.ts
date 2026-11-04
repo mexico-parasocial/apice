@@ -6,6 +6,7 @@ import {
   readCourseRecord,
 } from "../services/atproto.service";
 import { prisma } from "../utils/db";
+import { requeueSkippedForCourse } from "../services/credentials.service";
 import { z } from "zod";
 
 const publishSchema = z.object({
@@ -78,6 +79,10 @@ export const registerCourseAtprotoRef = CatchAsyncError(
         }),
       ]);
 
+      // Credentials skipped because the course wasn't on the Atmosphere yet
+      // can now be published.
+      await requeueSkippedForCourse(courseId);
+
       res.status(200).json({
         success: true,
         courseUri,
@@ -99,6 +104,7 @@ export const publishCourseToAtmosphere = CatchAsyncError(
       }
 
       const result = await publishCourseToPDS(parsed.data.courseId);
+      await requeueSkippedForCourse(parsed.data.courseId);
 
       res.status(200).json({
         success: true,

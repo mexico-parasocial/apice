@@ -46,13 +46,6 @@ const PLAYBACK_COOLDOWN_MS = 60_000;
 /** Don't bother resuming for less than this much prior progress. */
 const RESUME_THRESHOLD_SECONDS = 30;
 
-function getClientIp(req: Request): string | undefined {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") {
-    return forwarded.split(",")[0].trim();
-  }
-  return req.socket?.remoteAddress ?? undefined;
-}
 
 /**
  * GET /api/v1/videos/lessons/:lessonId/playback
@@ -66,8 +59,8 @@ function getClientIp(req: Request): string | undefined {
  *     burning bandwidth.
  *   - The lesson must exist and have a configured video reference.
  *
- * Every successful request is logged to VideoView so Ápice knows *who* watched
- * what, when, and through which provider.
+ * Every successful request is logged to VideoView (user, lesson, provider,
+ * time) for course analytics. No IP or user agent is stored.
  */
 export const getLessonPlayback = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -153,8 +146,6 @@ export const getLessonPlayback = CatchAsyncError(
           courseId: lesson.section.courseId,
           provider: playback.provider,
           playbackUrl: playback.playbackUrl,
-          ip: getClientIp(req),
-          userAgent: req.headers["user-agent"] ?? null,
         },
       });
     }

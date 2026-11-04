@@ -12,6 +12,7 @@ interface User {
   stripeCustomerId?: string | null;
   blueskyDid?: string | null;
   blueskyHandle?: string | null;
+  credentialsConsent?: boolean;
 }
 
 declare global {
