@@ -22,28 +22,22 @@ export interface AtprotoLoginResult {
 
 export const ATPROTO_DEEPLINK = "apice://auth/callback";
 
-function parseTokensFromRedirect(url: string): {
-  accessToken: string;
-  refreshToken: string;
-} {
+function parseCodeFromRedirect(url: string): string {
   // Manual parsing — Hermes' URL/URLSearchParams support is inconsistent.
-  const accessToken = url.match(/[?&]accessToken=([^&]+)/)?.[1];
-  const refreshToken = url.match(/[?&]refreshToken=([^&]+)/)?.[1];
-  if (!accessToken || !refreshToken) {
-    throw new Error("No se recibieron los tokens de sesión");
+  const code = url.match(/[?&]code=([^&#]+)/)?.[1];
+  if (!code) {
+    throw new Error("No se recibió el código de inicio de sesión");
   }
-  return {
-    accessToken: decodeURIComponent(accessToken),
-    refreshToken: decodeURIComponent(refreshToken),
-  };
+  return decodeURIComponent(code);
 }
 
 /**
  * ATProto OAuth login against the Ápice server.
  *
  * Flow: POST /auth/atproto/start → open authorizeUrl in an auth session →
- * the server completes OAuth and 302s to apice://auth/callback with tokens →
- * fetch /me and return everything the auth store needs.
+ * the server completes OAuth and 302s to apice://auth/callback?code=… →
+ * POST /auth/atproto/exchange trades that one-time code for a session.
+ * Tokens never travel in the deep link (any app can claim the scheme).
  */
 export function makeAtprotoAuthHooks(deps: AtprotoAuthDeps) {
   const { axios, serverUri, openAuthSession } = deps;
@@ -68,15 +62,16 @@ export function makeAtprotoAuthHooks(deps: AtprotoAuthDeps) {
           throw new Error("Inicio de sesión cancelado");
         }
 
-        const { accessToken, refreshToken } = parseTokensFromRedirect(
-          result.url
+        const code = parseCodeFromRedirect(result.url);
+        const exchangeRes = await axios.post(
+          `${serverUri}/api/v1/auth/atproto/exchange`,
+          { code }
         );
-
-        const meRes = await axios.get(`${serverUri}/api/v1/me`, {
-          headers: { "access-token": accessToken },
-        });
-
-        return { accessToken, refreshToken, user: meRes.data?.user };
+        const { accessToken, refreshToken, user } = exchangeRes.data ?? {};
+        if (!accessToken || !refreshToken) {
+          throw new Error("No se recibieron los tokens de sesión");
+        }
+        return { accessToken, refreshToken, user };
       },
       onSuccess: callbacks?.onSuccess,
       onError: callbacks?.onError,

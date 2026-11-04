@@ -1,6 +1,5 @@
 import { apiSlice } from "../api/apiSlice";
 import { userLoggedIn, userLoggedOut, userRegistration } from "./authSlice";
-import Cookies from "js-cookie";
 
 type RegistrationResponse = {
   message: string;
@@ -17,7 +16,6 @@ export const authApi = apiSlice.injectEndpoints({
         url: "registration",
         method: "POST",
         body: data,
-        credentials: "include" as const,
       }),
       async onQueryStarted(arg, { queryFulfilled, dispatch }) {
         try {
@@ -50,37 +48,24 @@ export const authApi = apiSlice.injectEndpoints({
           email,
           password,
         },
-        credentials: "include" as const,
       }),
       async onQueryStarted(arg, { queryFulfilled, dispatch }) {
         try {
+          // The API answered with HttpOnly session cookies; the body
+          // carries only the user.
           const result = await queryFulfilled;
-          Cookies.set("accessToken", result.data.accessToken);
-          Cookies.set("refreshToken", result.data.refreshToken);
-          dispatch(
-            userLoggedIn({
-              accessToken: result.data.accessToken,
-              refreshToken: result.data.refreshToken,
-              user: result.data.user,
-            })
-          );
+          dispatch(userLoggedIn({ user: result.data.user }));
         } catch (error: any) {
           console.log(error);
         }
       },
     }),
-    logOut: builder.query({
-      query: () => ({
-        url: "logout",
-        method: "GET",
-        credentials: "include" as const,
-      }),
-      async onQueryStarted(arg, { queryFulfilled, dispatch }) {
-        try {
-          dispatch(userLoggedOut());
-        } catch (error: any) {
-          console.log(error);
-        }
+    logOut: builder.mutation({
+      query: () => ({ url: "logout", method: "POST" }),
+      async onQueryStarted(_arg, { queryFulfilled, dispatch }) {
+        // Clear local state whether or not the server call succeeds.
+        await queryFulfilled.catch(() => undefined);
+        dispatch(userLoggedOut());
       },
     }),
   }),
@@ -90,5 +75,5 @@ export const {
   useRegisterMutation,
   useActivationMutation,
   useLoginMutation,
-  useLogOutQuery,
+  useLogOutMutation,
 } = authApi;

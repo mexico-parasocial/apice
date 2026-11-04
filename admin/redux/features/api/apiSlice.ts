@@ -1,54 +1,37 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { userLoggedIn } from "../auth/authSlice";
-import Cookies from "js-cookie";
 
+/**
+ * Base API slice.
+ *
+ * The session is a pair of HttpOnly cookies set by the API (see
+ * app/utils/apiFetch.ts for why): every request sends credentials and the
+ * `x-auth-mode: cookie` opt-in header, and token rotation happens server-side
+ * through Set-Cookie. Nothing token-shaped is ever visible to page scripts.
+ */
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_SERVER_URI,
+    credentials: "include",
     prepareHeaders: (headers) => {
-      const accessToken = Cookies.get("accessToken");
-      const refreshToken = Cookies.get("refreshToken");
-
-      if (accessToken) {
-        headers.set("access-token", accessToken);
-      }
-      if (refreshToken) {
-        headers.set("refresh-token", refreshToken);
-      }
+      headers.set("x-auth-mode", "cookie");
       return headers;
     },
   }),
   endpoints: (builder) => ({
-    refreshToken: builder.query({
-      query: (data) => ({
-        url: "refresh",
-        method: "GET",
-        credentials: "include" as const,
-      }),
-    }),
     loadUser: builder.query({
-      query: (data) => ({
-        url: "me",
-        method: "GET",
-        credentials: "include" as const,
-      }),
-      async onQueryStarted(arg, { queryFulfilled, dispatch }) {
+      query: () => ({ url: "me", method: "GET" }),
+      async onQueryStarted(_arg, { queryFulfilled, dispatch }) {
         try {
           const result = await queryFulfilled;
-          dispatch(
-            userLoggedIn({
-              accessToken: result.data.accessToken,
-              refreshToken: result.data.refreshToken,
-              user: result.data.user,
-            })
-          );
-        } catch (error: any) {
-          console.log(error);
+          dispatch(userLoggedIn({ user: result.data.user }));
+        } catch {
+          // Not signed in: the login screen handles it.
         }
       },
     }),
   }),
 });
 
-export const { useRefreshTokenQuery, useLoadUserQuery } = apiSlice;
+export const { useLoadUserQuery } = apiSlice;

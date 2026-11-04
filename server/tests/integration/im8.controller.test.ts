@@ -20,7 +20,7 @@ vi.mock("bcryptjs", () => ({
 vi.mock("jsonwebtoken", () => ({
   default: {
     sign: vi.fn(() => "signed-token"),
-    verify: vi.fn(() => ({ id: "existing-user-id" })),
+    verify: vi.fn(() => ({ id: "existing-user-id", sid: "session-1" })),
   },
 }));
 
@@ -62,7 +62,7 @@ const mockedAxios = axios as unknown as {
 };
 
 function mockReqResNext(body: any) {
-  const req = { body } as any;
+  const req = { body, headers: {} } as any;
   const res: any = { json: vi.fn() };
   res.status = vi.fn().mockReturnValue(res);
   const next = vi.fn();

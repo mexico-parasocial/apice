@@ -1,7 +1,7 @@
 "use client";
+import { apiFetch } from "@/app/utils/apiFetch";
 
 import type { OAuthSession } from "@atproto/oauth-client-browser";
-import Cookies from "js-cookie";
 
 /**
  * Instructor-owned course publishing (Workstream E).
@@ -90,11 +90,9 @@ function createRecord<T = { uri: string; cid: string }>(
 }
 
 async function fetchCourseContent(courseId: string): Promise<LessonContent[]> {
-  const accessToken = Cookies.get("accessToken");
-  const res = await fetch(
+  const res = await apiFetch(
     `${process.env.NEXT_PUBLIC_SERVER_URI}/get-admin-course-content/${courseId}`,
     {
-      headers: accessToken ? { "access-token": accessToken } : {},
       credentials: "include",
     }
   );
@@ -218,14 +216,12 @@ export async function publishCourseToOwnPds(
   }
 
   // 5. Register the refs back to Ápice.
-  const accessToken = Cookies.get("accessToken");
-  const registerRes = await fetch(
+  const registerRes = await apiFetch(
     `${process.env.NEXT_PUBLIC_SERVER_URI}/course/${courseId}/atprotoRef`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(accessToken ? { "access-token": accessToken } : {}),
       },
       credentials: "include",
       body: JSON.stringify({

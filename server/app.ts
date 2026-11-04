@@ -38,6 +38,7 @@ import metricsRouter from "./routes/metrics.route";
 import { metricsMiddleware } from "./middleware/metrics";
 import { rateLimit } from "express-rate-limit";
 import jwt from "jsonwebtoken";
+import { readTokens } from "./utils/jwt";
 import pinoHttp from "pino-http";
 import { logger } from "./utils/logger";
 
@@ -119,8 +120,8 @@ function anonymousKey(ip: string): string {
  * and escape the quota entirely.
  */
 function rateLimitKey(req: Request): string {
-  const token = req.headers["access-token"];
-  if (typeof token === "string" && token && process.env.ACCESS_TOKEN) {
+  const token = readTokens(req).access;
+  if (token && process.env.ACCESS_TOKEN) {
     try {
       const decoded = jwt.verify(token, process.env.ACCESS_TOKEN, {
         ignoreExpiration: true,
@@ -161,7 +162,12 @@ app.use(metricsMiddleware);
 
 app.use(limiter);
 app.use(
-  ["/api/v1/login", "/api/v1/registration", "/api/v1/activate-user"],
+  [
+    "/api/v1/login",
+    "/api/v1/registration",
+    "/api/v1/activate-user",
+    "/api/v1/auth/atproto/exchange",
+  ],
   authLimiter
 );
 

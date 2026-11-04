@@ -1,69 +1,92 @@
 import { Request, Response, NextFunction } from "express";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { CatchAsyncError } from "./catchAsyncErrors";
 import ErrorHandler from "../utils/ErrorHandler";
-import jwt, { JwtPayload } from "jsonwebtoken";
-import { redis } from "../utils/redis";
-import { updateAccessToken } from "../controllers/user.controller";
+import {
+  deliverTokens,
+  isCookieMode,
+  isSessionActive,
+  loadUser,
+  readTokens,
+  rotateSession,
+} from "../utils/jwt";
 
-// authenticated user
-//
-// Every "no usable session" outcome is a 401, never a 400: clients treat 401
-// as "the session is dead, log out" (the mobile AuthProvider does exactly
-// that), whereas a 400 just surfaces as a per-screen error and leaves the user
-// stuck "logged in". 403 is reserved for authorizeRoles below.
+/**
+ * Authenticates the request (see utils/jwt.ts for the session model).
+ *
+ * Every "no usable session" outcome is a 401, never a 400: clients treat 401
+ * as "the session is dead, log out" (the mobile AuthProvider does exactly
+ * that). 403 is reserved for authorizeRoles below.
+ *
+ * An expired access token is refreshed transparently when a valid refresh
+ * token comes along: the new pair goes back on x-access-token /
+ * x-refresh-token (header mode) or as HttpOnly cookies (cookie mode), and the
+ * request continues.
+ */
 export const isAutheticated = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const access_token = req.headers["access-token"] as string;
-    if (!access_token) {
-      return next(
-        new ErrorHandler("Please login to access this resource", 401)
-      );
+    const { access, refresh } = readTokens(req);
+    if (!access) {
+      return next(new ErrorHandler("Please login to access this resource", 401));
     }
-    // Verify signature but tolerate expiry here: expired tokens are handled
-    // by the refresh flow (updateAccessToken) below.
+
     let decoded: JwtPayload;
     try {
-      decoded = jwt.verify(access_token, process.env.ACCESS_TOKEN as string, {
+      // Expiry is checked below so the refresh flow can take over.
+      decoded = jwt.verify(access, process.env.ACCESS_TOKEN as string, {
         ignoreExpiration: true,
       }) as JwtPayload;
     } catch {
       return next(new ErrorHandler("access token is not valid", 401));
     }
 
-    if (!decoded?.id) {
+    let userId = decoded?.id as string | undefined;
+    let sid = decoded?.sid as string | undefined;
+    if (!userId || !sid) {
       return next(new ErrorHandler("access token is not valid", 401));
     }
 
-    // check if the access token is expired
     if (decoded.exp && decoded.exp <= Date.now() / 1000) {
-      try {
-        await updateAccessToken(req, res, next);
-      } catch (error) {
-        return next(error);
+      if (!refresh) {
+        return next(new ErrorHandler("Could not refresh token", 401));
       }
-    } else {
-      const user = await redis.get(decoded.id);
-
-      if (!user) {
-        return next(
-          new ErrorHandler("Please login to access this resource", 401)
-        );
+      const rotated = await rotateSession(refresh);
+      if (!rotated.ok) {
+        return next(new ErrorHandler(rotated.reason, 401));
       }
-
-      req.user = JSON.parse(user);
-
-      next();
+      if (rotated.userId !== userId) {
+        return next(new ErrorHandler("Could not refresh token", 401));
+      }
+      sid = rotated.sid;
+      deliverTokens(req, res, rotated.tokens);
+      if (!isCookieMode(req)) {
+        res.setHeader("x-access-token", rotated.tokens.accessToken);
+        res.setHeader("x-refresh-token", rotated.tokens.refreshToken);
+      }
+    } else if (!(await isSessionActive(userId, sid))) {
+      return next(new ErrorHandler("Please login to access this resource", 401));
     }
+
+    const user = await loadUser(userId);
+    if (!user) {
+      return next(new ErrorHandler("Please login to access this resource", 401));
+    }
+    req.user = user;
+    req.sessionId = sid;
+    next();
   }
 );
 
 // validate user role
 export const authorizeRoles = (...roles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!roles.includes(req.user?.role || "")) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return next(new ErrorHandler("Please login to access this resource", 401));
+    }
+    if (!roles.includes(req.user.role || "")) {
       return next(
         new ErrorHandler(
-          `Role: ${req.user?.role} is not allowed to access this resource`,
+          `Role: ${req.user.role} is not allowed to access this resource`,
           403
         )
       );

@@ -19,6 +19,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: User;
+      /** Session id of the authenticated device (see utils/jwt.ts). */
+      sessionId?: string;
     }
   }
 }

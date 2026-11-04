@@ -1,27 +1,10 @@
 import { Response } from "express";
-import { redis } from "../utils/redis";
 import { prisma } from "../utils/db";
-import { SESSION_CACHE_TTL_SECONDS } from "../utils/cache";
+import { cacheUser, loadUser } from "../utils/jwt";
 
-// get user by id: the session cache first, then the database. Resolves to
+// get user by id: the user cache first, then the database. Resolves to
 // null when the user does not exist; the caller decides what to answer.
-export const getUserById = async (id: string) => {
-  const userJson = await redis.get(id);
-  if (userJson) {
-    return JSON.parse(userJson);
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id },
-  });
-
-  if (user) {
-    // Cache the user for future requests
-    await redis.set(id, JSON.stringify(user), "EX", SESSION_CACHE_TTL_SECONDS);
-  }
-
-  return user;
-};
+export const getUserById = (id: string) => loadUser(id);
 
 // Get All users
 export const getAllUsersService = async (
@@ -68,10 +51,10 @@ export const updateUserRoleService = async (id: string, role: string) => {
     data: { role },
   });
 
-  // The auth middleware serves req.user from the Redis session cache, so
-  // without this delete a promotion/demotion would take up to seven days
-  // (the cache TTL) to affect what the user can actually do.
-  await redis.del(id);
+  // The auth middleware serves req.user from the user cache: refresh it so
+  // the new role applies on the user's next request, without logging them
+  // out.
+  await cacheUser(user);
 
   return user;
 };

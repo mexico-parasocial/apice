@@ -6,8 +6,7 @@ import path from "path";
 import ejs from "ejs";
 import sendMail from "../utils/sendMail";
 import { getAllOrdersService, executeOrderTransaction } from "../services/order.service";
-import { redis } from "../utils/redis";
-import { SESSION_CACHE_TTL_SECONDS } from "../utils/cache";
+import { cacheUser } from "../utils/jwt";
 import { z } from "zod";
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -127,7 +126,7 @@ export const createOrder = CatchAsyncError(
         course.name
       );
 
-      await redis.set(user.id, JSON.stringify(user), "EX", SESSION_CACHE_TTL_SECONDS);
+      await cacheUser(user);
 
       res.status(201).json({
         success: true,
@@ -213,7 +212,7 @@ export const createMobileOrder = CatchAsyncError(
         course.name
       );
 
-      await redis.set(user.id, JSON.stringify(user), "EX", SESSION_CACHE_TTL_SECONDS);
+      await cacheUser(user);
 
       res.status(201).json({
         success: true,

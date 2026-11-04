@@ -1,18 +1,19 @@
 import { prisma } from "../utils/db";
 import ErrorHandler from "../utils/ErrorHandler";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
-import jwt, { JwtPayload } from "jsonwebtoken";
 import sendMail from "../utils/sendMail";
 import {
-  isRefreshTokenValid,
-  refreshTokenExpireSeconds,
-  revokeAllRefreshTokens,
-  revokeRefreshToken,
-  sendToken,
-  signTokens,
+  cacheUser,
+  clearTokenCookies,
+  createSession,
+  deliverTokens,
+  forgetUser,
+  revokeAllSessions,
+  revokeSession,
+  signIn,
 } from "../utils/jwt";
 import { redis } from "../utils/redis";
-import { SESSION_CACHE_TTL_SECONDS, courseCacheKey } from "../utils/cache";
+import { courseCacheKey } from "../utils/cache";
 import bcrypt from "bcryptjs";
 import { createHash, randomInt, randomUUID } from "crypto";
 import {
@@ -227,103 +228,24 @@ export const loginUser = CatchAsyncError(
       }
 
       const { password: _discarded, ...safeUser } = user;
-      await sendToken(safeUser, 200, res);
+      await signIn(req, res, safeUser);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }
   }
 );
 
-// logout user
+// logout user — ends this device's session only.
 export const logoutUser = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      res.cookie("access_token", "", { maxAge: 1 });
-      res.cookie("refresh_token", "", { maxAge: 1 });
-      const userId = req.user?.id || "";
-      if (userId) {
-        await redis.del(userId);
-        await revokeAllRefreshTokens(userId);
-      }
-      res.status(200).json({
-        success: true,
-        message: "Logged out successfully",
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+  async (req: Request, res: Response) => {
+    if (req.user?.id && req.sessionId) {
+      await revokeSession(req.user.id, req.sessionId);
     }
-  }
-);
-
-// update access token (refresh token rotation)
-export const updateAccessToken = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const refresh_token = req.headers["refresh-token"] as string;
-      const message = "Could not refresh token";
-
-      // Every rejection below is a 401: by the time we get here the access
-      // token has expired, so failing to refresh means the session is over.
-      if (!refresh_token) {
-        return next(new ErrorHandler(message, 401));
-      }
-
-      let decoded: JwtPayload;
-      try {
-        decoded = jwt.verify(
-          refresh_token,
-          process.env.REFRESH_TOKEN as string
-        ) as JwtPayload;
-      } catch {
-        return next(new ErrorHandler(message, 401));
-      }
-
-      if (!decoded?.id || !decoded?.jti) {
-        return next(new ErrorHandler(message, 401));
-      }
-
-      const session = await redis.get(decoded.id as string);
-
-      if (!session) {
-        return next(
-          new ErrorHandler("Please login for access this resources!", 401)
-        );
-      }
-
-      // Reject revoked or reused refresh tokens (rotation whitelist).
-      const stillValid = await isRefreshTokenValid(decoded.id, decoded.jti);
-      if (!stillValid) {
-        return next(
-          new ErrorHandler("Session expired, please login again", 401)
-        );
-      }
-
-      const user = JSON.parse(session);
-
-      // Rotate: revoke the presented token, issue a fresh pair.
-      await revokeRefreshToken(decoded.id, decoded.jti);
-      const { accessToken, refreshToken } = await signTokens(user.id);
-
-      await redis.set(
-        user.id,
-        JSON.stringify(user),
-        "EX",
-        refreshTokenExpireSeconds
-      );
-
-      // The middleware chain continues with the original request; the new
-      // tokens travel back on response headers for the client to store.
-      res.setHeader("x-access-token", accessToken);
-      res.setHeader("x-refresh-token", refreshToken);
-
-      req.user = user;
-
-      return next();
-    } catch (error: any) {
-      // Redis or signing blew up: our failure, not the caller's credentials.
-      // Must not be a 401, or an infra blip would log every client out.
-      return next(new ErrorHandler(error.message, 500));
-    }
+    clearTokenCookies(res);
+    res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
   }
 );
 
@@ -376,7 +298,7 @@ export const updateCredentialsConsent = CatchAsyncError(
         credentialsConsentAt: enabled ? new Date() : null,
       },
     });
-    await redis.set(userId, JSON.stringify(user), "EX", SESSION_CACHE_TTL_SECONDS);
+    await cacheUser(user);
 
     const queued = enabled
       ? await enqueueAllEarnedCredentials(userId)
@@ -416,7 +338,7 @@ export const updateUserInfo = CatchAsyncError(
         data: { name },
       });
 
-      await redis.set(userId, JSON.stringify(user), "EX", SESSION_CACHE_TTL_SECONDS);
+      await cacheUser(user);
 
       res.status(200).json({
         success: true,
@@ -474,15 +396,13 @@ export const updatePassword = CatchAsyncError(
       // A password change invalidates every session: refresh tokens issued
       // before it must not survive. A fresh pair is returned so the device
       // that made the change stays logged in; every other device logs out.
-      await revokeAllRefreshTokens(user.id);
-      const { accessToken, refreshToken } = await signTokens(user.id);
-      await redis.set(user.id, JSON.stringify(updatedUser), "EX", SESSION_CACHE_TTL_SECONDS);
+      await revokeAllSessions(user.id);
+      const tokens = await createSession(updatedUser);
 
       res.status(200).json({
         success: true,
         user: updatedUser,
-        accessToken,
-        refreshToken,
+        ...deliverTokens(req, res, tokens),
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
@@ -537,7 +457,7 @@ export const updateProfilePicture = CatchAsyncError(
 
         // EX matters: an immortal session key would outlive the user's
         // tokens and leak a stale user object into every authed request.
-        await redis.set(userId!, JSON.stringify(updatedUser), "EX", SESSION_CACHE_TTL_SECONDS);
+        await cacheUser(updatedUser);
 
         res.status(200).json({
           success: true,
@@ -663,10 +583,9 @@ export const deleteUser = CatchAsyncError(
         await redis.del(...affectedCourseIds.map(courseCacheKey));
       }
 
-      // Kill the session cache AND every live refresh token — deleting the
-      // cache alone would leave issued tokens working until they expire.
-      await redis.del(id);
-      await revokeAllRefreshTokens(id);
+      // End every session and drop the cached row.
+      await revokeAllSessions(id);
+      await forgetUser(id);
 
       res.status(200).json({
         success: true,

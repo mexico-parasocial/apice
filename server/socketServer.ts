@@ -3,8 +3,8 @@ import http from "http";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { metrics } from "./utils/metrics";
 import { log } from "./utils/logger";
-import { redis } from "./utils/redis";
 import { ADMIN_ROOM, registerRealtime, userRoom } from "./utils/realtime";
+import { ACCESS_COOKIE, isSessionActive, loadUser } from "./utils/jwt";
 
 const socketLog = log("socket");
 
@@ -21,23 +21,29 @@ interface SocketIdentity {
  * client-to-client relay: the old `notification` event let any logged-in
  * learner broadcast arbitrary payloads to every connected admin.
  *
- * The handshake must carry a valid access token. The role comes from the
- * same Redis session the HTTP auth middleware reads, so a demoted admin stops
- * joining the admin room as soon as their session is refreshed.
+ * The handshake must carry a valid access token for a live session. The
+ * role comes from the same user cache the HTTP auth middleware reads.
  */
 export const initSocketServer = (server: http.Server) => {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : ["http://localhost:3000"];
+
   const io = new SocketIOServer(server, {
-    cors: {
-      origin: process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(",")
-        : ["http://localhost:3000"],
-      credentials: true,
-    },
+    cors: { origin: allowedOrigins, credentials: true },
   });
 
   io.use(async (socket, next) => {
-    const token =
-      socket.handshake.auth?.token || socket.handshake.headers["access-token"];
+    // Mobile passes the token in the handshake; the admin web relies on its
+    // HttpOnly cookie. A cookie only counts from an allowed origin, since a
+    // WebSocket upgrade isn't subject to CORS.
+    let token: unknown = socket.handshake.auth?.token;
+    if (!token) {
+      const origin = socket.handshake.headers.origin;
+      if (origin && allowedOrigins.includes(origin)) {
+        token = readCookie(socket.handshake.headers.cookie, ACCESS_COOKIE);
+      }
+    }
     if (!token || typeof token !== "string") {
       return next(new Error("Authentication error: No token provided"));
     }
@@ -47,15 +53,17 @@ export const initSocketServer = (server: http.Server) => {
     } catch {
       return next(new Error("Authentication error: Token verification failed"));
     }
-    if (!decoded?.id) {
+    if (!decoded?.id || !decoded?.sid) {
       return next(new Error("Authentication error: Invalid token"));
     }
     try {
-      const session = await redis.get(decoded.id);
-      if (!session) {
+      if (!(await isSessionActive(decoded.id, decoded.sid))) {
         return next(new Error("Authentication error: No session"));
       }
-      const user = JSON.parse(session) as { id: string; role?: string };
+      const user = await loadUser(decoded.id);
+      if (!user) {
+        return next(new Error("Authentication error: No session"));
+      }
       socket.data.identity = {
         userId: user.id,
         role: user.role ?? "user",
@@ -87,3 +95,12 @@ export const initSocketServer = (server: http.Server) => {
   // before the HTTP server stops accepting new ones.
   return io;
 };
+
+function readCookie(header: string | undefined, name: string): string | undefined {
+  if (!header) return undefined;
+  for (const part of header.split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === name) return decodeURIComponent(v.join("="));
+  }
+  return undefined;
+}

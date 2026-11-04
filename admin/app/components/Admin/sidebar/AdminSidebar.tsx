@@ -25,7 +25,7 @@ import { useSelector } from "react-redux";
 import Link from "next/link";
 import Image from "next/image";
 import { useTheme } from "next-themes";
-import Cookies from "js-cookie";
+import { useLogOutMutation } from "@/redux/features/auth/authApi";
 
 interface itemProps {
   title: string;
@@ -58,6 +58,7 @@ const AdminSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selected, setSelected] = useState("Dashboard");
   const [mounted, setMounted] = useState(false);
+  const [logOut] = useLogOutMutation();
   const { theme, setTheme } = useTheme();
 
   useEffect(() => setMounted(true), []);
@@ -67,8 +68,8 @@ const AdminSidebar = () => {
   }
 
   const logoutHandler = async () => {
-    Cookies.remove("accessToken");
-    Cookies.remove("refreshToken");
+    // Ends the session server-side and clears the HttpOnly cookies.
+    await logOut(undefined).unwrap().catch(() => undefined);
     window.location.reload();
   };
 

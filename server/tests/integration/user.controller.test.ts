@@ -23,7 +23,7 @@ vi.mock("../../utils/redis", () => ({
 
 vi.mock("../../utils/jwt", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../utils/jwt")>()),
-  revokeAllRefreshTokens: vi.fn(() => Promise.resolve()),
+  revokeAllSessions: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("../../utils/logger", () => {
@@ -44,7 +44,7 @@ import userRouter from "../../routes/user.route";
 import { ErrorMiddleware } from "../../middleware/error";
 import { prisma } from "../../utils/db";
 import { redis } from "../../utils/redis";
-import { revokeAllRefreshTokens } from "../../utils/jwt";
+import { revokeAllSessions } from "../../utils/jwt";
 
 const app = express();
 app.use(express.json());
@@ -90,7 +90,7 @@ describe("GET /api/v1/me", () => {
     expect(res.status).toBe(200);
     expect(res.body.user).toEqual(user);
     expect(redis.set).toHaveBeenCalledWith(
-      "user-1",
+      "user:user-1",
       JSON.stringify(user),
       "EX",
       expect.any(Number)
@@ -122,7 +122,7 @@ describe("PUT /api/v1/update-user", () => {
     expect(res.body.success).toBe(false);
   });
 
-  it("updates the role and drops the session cache", async () => {
+  it("updates the role and refreshes the user cache without logging them out", async () => {
     const promoted = { ...user, role: "admin" };
     mocked(prisma.user.findUnique).mockResolvedValue(user);
     mocked(prisma.user.update).mockResolvedValue(promoted);
@@ -135,7 +135,13 @@ describe("PUT /api/v1/update-user", () => {
       where: { id: "user-1" },
       data: { role: "admin" },
     });
-    expect(redis.del).toHaveBeenCalledWith("user-1");
+    expect(redis.set).toHaveBeenCalledWith(
+      "user:user-1",
+      JSON.stringify(promoted),
+      "EX",
+      expect.any(Number)
+    );
+    expect(redis.del).not.toHaveBeenCalled();
   });
 });
 
@@ -147,14 +153,14 @@ describe("DELETE /api/v1/delete-user/:id", () => {
     mocked(prisma.reviewReply.findMany).mockResolvedValue([]);
   });
 
-  it("deletes the user and revokes the session and every refresh token", async () => {
+  it("deletes the user, ends every session and drops the cached row", async () => {
     const res = await request(app).delete("/api/v1/delete-user/user-1");
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: "user-1" } });
-    expect(redis.del).toHaveBeenCalledWith("user-1");
-    expect(revokeAllRefreshTokens).toHaveBeenCalledWith("user-1");
+    expect(redis.del).toHaveBeenCalledWith("user:user-1");
+    expect(revokeAllSessions).toHaveBeenCalledWith("user-1");
     // No reviews or replies: no course cache to touch.
     expect(redis.del).toHaveBeenCalledTimes(1);
     expect(prisma.course.update).not.toHaveBeenCalled();
@@ -200,7 +206,7 @@ describe("DELETE /api/v1/delete-user/:id", () => {
     expect(res.body.success).toBe(false);
     expect(res.body.message).not.toMatch(/constraint|fkey|prisma/i);
     // The delete did not happen, so the sessions stay.
-    expect(revokeAllRefreshTokens).not.toHaveBeenCalled();
+    expect(revokeAllSessions).not.toHaveBeenCalled();
   });
 
   it("answers 404 for an unknown user", async () => {

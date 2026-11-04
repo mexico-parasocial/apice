@@ -29,7 +29,7 @@ vi.mock("../../services/order.service", () => ({
 import { createOrder, createMobileOrder } from "../../controllers/order.controller";
 import { prisma } from "../../utils/db";
 import { redis } from "../../utils/redis";
-import { SESSION_CACHE_TTL_SECONDS } from "../../utils/cache";
+import { refreshTokenExpireSeconds, userCacheKey } from "../../utils/jwt";
 
 describe("createOrder error handling", () => {
   beforeEach(() => {
@@ -104,7 +104,7 @@ describe.each([
     vi.clearAllMocks();
   });
 
-  it("writes the session key with EX and a positive TTL", async () => {
+  it("writes the user cache key with EX and a positive TTL", async () => {
     const user = { id: "user-123", email: "u@example.com", name: "U" };
     const req = { body: { courseId: "course-123" }, user: { id: user.id } } as any;
     const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as any;
@@ -124,15 +124,15 @@ describe.each([
     expect(res.status).toHaveBeenCalledWith(201);
 
     const sessionWrites = (redis.set as any).mock.calls.filter(
-      (call: any[]) => call[0] === user.id
+      (call: any[]) => call[0] === userCacheKey(user.id)
     );
     expect(sessionWrites).toHaveLength(1);
     const [key, value, mode, ttl] = sessionWrites[0];
-    expect(key).toBe(user.id);
+    expect(key).toBe(userCacheKey(user.id));
     expect(JSON.parse(value)).toEqual(user);
     expect(mode).toBe("EX");
     expect(typeof ttl).toBe("number");
     expect(ttl).toBeGreaterThan(0);
-    expect(ttl).toBe(SESSION_CACHE_TTL_SECONDS);
+    expect(ttl).toBe(refreshTokenExpireSeconds);
   });
 });

@@ -1,9 +1,9 @@
 "use client";
+import { apiFetch } from "@/app/utils/apiFetch";
 
 import React, { FC, useState } from "react";
 import { styles } from "@/app/styles/style";
 import { toast } from "react-hot-toast";
-import Cookies from "js-cookie";
 
 type Props = {
   lessonId?: string;
@@ -29,14 +29,12 @@ const StreamplaceVideoRef: FC<Props> = ({ lessonId, videoUrl, onChange }) => {
 
     setIsSaving(true);
     try {
-      const accessToken = Cookies.get("accessToken");
-      const res = await fetch(
+      const res = await apiFetch(
         `${process.env.NEXT_PUBLIC_SERVER_URI}/videos/lessons/${lessonId}/videoRef`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(accessToken ? { "access-token": accessToken } : {}),
           },
           credentials: "include",
           body: JSON.stringify({ videoUrl }),

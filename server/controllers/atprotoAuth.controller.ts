@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { AtpAgent } from "@atproto/api";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import ErrorHandler from "../utils/ErrorHandler";
@@ -13,7 +13,7 @@ import {
   isLoopbackMode,
   startAuthorization,
 } from "../services/atprotoOAuth.service";
-import { refreshTokenExpireSeconds, signTokens } from "../utils/jwt";
+import { signIn } from "../utils/jwt";
 import { requeueSkippedForUser } from "../services/credentials.service";
 
 const startSchema = z.object({
@@ -25,6 +25,10 @@ const startSchema = z.object({
 });
 
 const MOBILE_DEEPLINK = "apice://auth/callback";
+const LOGIN_CODE_TTL_SECONDS = 60;
+const loginCodeKey = (code: string) => `login-code:${code}`;
+
+const exchangeSchema = z.object({ code: z.string().min(16).max(128) });
 
 /**
  * GET /api/v1/auth/atproto/client-metadata.json
@@ -123,27 +127,18 @@ export const atprotoAuthCallback = CatchAsyncError(
       // A fresh OAuth session may unblock credentials skipped for lack of one.
       await requeueSkippedForUser(user.id).catch(() => 0);
 
-      const { accessToken, refreshToken } = await signTokens(user.id);
-      await redis.set(
-        user.id,
-        JSON.stringify(user),
-        "EX",
-        refreshTokenExpireSeconds
-      );
-
       if (stateData.platform === "mobile") {
+        // Tokens never ride in the deep link: any app can register the
+        // apice:// scheme, and URLs end up in logs and history. The link
+        // carries a one-time code the app exchanges over HTTPS instead.
+        const code = randomBytes(32).toString("base64url");
+        await redis.set(loginCodeKey(code), user.id, "EX", LOGIN_CODE_TTL_SECONDS);
         const url = new URL(MOBILE_DEEPLINK);
-        url.searchParams.set("accessToken", accessToken);
-        url.searchParams.set("refreshToken", refreshToken);
+        url.searchParams.set("code", code);
         return res.redirect(url.toString());
       }
 
-      res.status(200).json({
-        success: true,
-        user,
-        accessToken,
-        refreshToken,
-      });
+      await signIn(req, res, user);
     } catch (error: any) {
       return next(
         new ErrorHandler(error.message || "Bluesky sign-in failed", 400)
@@ -164,5 +159,31 @@ export const getAtprotoAuthMode = CatchAsyncError(
       success: true,
       mode: isLoopbackMode() ? "loopback" : "discoverable",
     });
+  }
+);
+
+/**
+ * POST /api/v1/auth/atproto/exchange  { code }
+ *
+ * Mobile half of the OAuth callback: trades the one-time code from the deep
+ * link for a session. Single use, valid for a minute.
+ */
+export const exchangeAtprotoLoginCode = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const parsed = exchangeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return next(new ErrorHandler("Invalid login code", 400));
+    }
+    const key = loginCodeKey(parsed.data.code);
+    const userId = await redis.get(key);
+    await redis.del(key);
+    if (!userId) {
+      return next(new ErrorHandler("Login code expired or already used", 401));
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return next(new ErrorHandler("Login code expired or already used", 401));
+    }
+    await signIn(req, res, user);
   }
 );

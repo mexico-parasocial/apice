@@ -22,7 +22,8 @@ userRouter.post("/activate-user", activateUser);
 
 userRouter.post("/login", loginUser);
 
-userRouter.get("/logout",isAutheticated, logoutUser);
+// POST: it changes state. (Was GET, which any <img> tag could trigger.)
+userRouter.post("/logout", isAutheticated, logoutUser);
 
 userRouter.get("/me", isAutheticated, getUserInfo);
 

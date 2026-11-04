@@ -1,3 +1,4 @@
+import { apiFetch } from "@/app/utils/apiFetch";
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Box, Button, Modal } from "@mui/material";
@@ -13,7 +14,6 @@ import { format } from "timeago.js";
 import { styles } from "@/app/styles/style";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
-import Cookies from "js-cookie";
 import { MdOutlineCloudDone, MdOutlineCloudUpload } from "react-icons/md";
 import { initStreamplaceSession } from "@/app/utils/streamplaceOAuth";
 import { publishCourseToOwnPds } from "@/app/utils/civicPublish";
@@ -53,14 +53,12 @@ const AllCourses = (props: Props) => {
         console.log("app.civic.course:", result.courseUri);
       } else {
         // Fallback: service-account publishing (Ápice's DID owns the record).
-        const accessToken = Cookies.get("accessToken");
-        const res = await fetch(
+        const res = await apiFetch(
           `${process.env.NEXT_PUBLIC_SERVER_URI}/publish-course`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              ...(accessToken ? { "access-token": accessToken } : {}),
             },
             credentials: "include",
             body: JSON.stringify({ courseId: id }),

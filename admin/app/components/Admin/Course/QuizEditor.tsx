@@ -1,9 +1,9 @@
 "use client";
+import { apiFetch } from "@/app/utils/apiFetch";
 
 import React, { FC, useEffect, useState } from "react";
 import { styles } from "@/app/styles/style";
 import { toast } from "react-hot-toast";
-import Cookies from "js-cookie";
 import { AiOutlineDelete, AiOutlinePlusCircle } from "react-icons/ai";
 import { MdOutlineKeyboardArrowDown } from "react-icons/md";
 
@@ -24,10 +24,8 @@ const blankQuestion = (): DraftQuestion => ({
 });
 
 function authHeaders() {
-  const accessToken = Cookies.get("accessToken");
   return {
     "Content-Type": "application/json",
-    ...(accessToken ? { "access-token": accessToken } : {}),
   };
 }
 
@@ -54,7 +52,7 @@ const QuizEditor: FC<Props> = ({ lessonId }) => {
     let cancelled = false;
     setLoading(true);
 
-    fetch(`${process.env.NEXT_PUBLIC_SERVER_URI}/quiz/${lessonId}`, {
+    apiFetch(`${process.env.NEXT_PUBLIC_SERVER_URI}/quiz/${lessonId}`, {
       headers: authHeaders(),
       credentials: "include",
     })
@@ -164,7 +162,7 @@ const QuizEditor: FC<Props> = ({ lessonId }) => {
 
     setIsSaving(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URI}/quiz`, {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_SERVER_URI}/quiz`, {
         method: "POST",
         headers: authHeaders(),
         credentials: "include",
@@ -188,7 +186,7 @@ const QuizEditor: FC<Props> = ({ lessonId }) => {
 
     setIsDeleting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URI}/quiz/${lessonId}`, {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_SERVER_URI}/quiz/${lessonId}`, {
         method: "DELETE",
         headers: authHeaders(),
         credentials: "include",

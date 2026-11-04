@@ -6,7 +6,7 @@ import React, {
   type ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { onTokensRotated, onUnauthorized, setTokens } from "@/api/client";
+import { api, onTokensRotated, onUnauthorized, setTokens } from "@/api/client";
 
 interface AuthContextValue {
   token: string | null;
@@ -89,6 +89,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // End this device's session on the server too; otherwise the tokens
+    // stay valid until they expire. Best-effort: offline logout still works.
+    await api.post("/logout").catch(() => undefined);
     setTokens({ accessToken: null, refreshToken: null });
     setToken(null);
     setUser(null);

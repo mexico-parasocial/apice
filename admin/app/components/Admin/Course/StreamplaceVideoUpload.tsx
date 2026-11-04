@@ -1,9 +1,9 @@
 "use client";
+import { apiFetch } from "@/app/utils/apiFetch";
 
 import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { toast } from "react-hot-toast";
-import Cookies from "js-cookie";
 import { styles } from "@/app/styles/style";
 import {
   getStreamplaceOAuthClient,
@@ -94,14 +94,12 @@ const StreamplaceVideoUpload: FC<Props> = ({
   const linkToLesson = useCallback(
     async (atUri: string, durationSeconds?: number) => {
       if (!lessonId) return; // draft lesson — parent keeps the URI in state
-      const accessToken = Cookies.get("accessToken");
-      const res = await fetch(
+      const res = await apiFetch(
         `${process.env.NEXT_PUBLIC_SERVER_URI}/videos/lessons/${lessonId}/videoRef`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(accessToken ? { "access-token": accessToken } : {}),
           },
           credentials: "include",
           body: JSON.stringify({ videoUrl: atUri, videoLength: durationSeconds }),

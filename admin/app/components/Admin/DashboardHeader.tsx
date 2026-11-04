@@ -7,7 +7,6 @@ import {
 import React, { FC, useEffect, useState } from "react";
 import { IoMdNotificationsOutline } from "react-icons/io";
 import socketIO from "socket.io-client";
-import Cookies from "js-cookie";
 import { format } from "timeago.js";
 const ENDPOINT = process.env.NEXT_PUBLIC_SOCKET_SERVER_URI || "";
 
@@ -63,14 +62,13 @@ const DashboardHeader: FC<Props> = ({ open, setOpen }) => {
     }
   }, [data, isSuccess, refetch]);
 
-  // The server only lets a socket in with a valid access token, and only
-  // admins join the room staff notifications are pushed to. The auth
-  // callback re-reads the cookie on every (re)connect, so a rotated token is
-  // picked up without a page reload.
+  // The handshake carries the HttpOnly session cookie (same-site), which the
+  // server accepts from allowed origins; only admins join the room staff
+  // notifications are pushed to.
   useEffect(() => {
     const socket = socketIO(ENDPOINT, {
       transports: ["websocket"],
-      auth: (cb) => cb({ token: Cookies.get("accessToken") ?? "" }),
+      withCredentials: true,
     });
     socket.on("newNotification", () => {
       refetch();

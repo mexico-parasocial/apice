@@ -3,7 +3,7 @@ import axios from "axios";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import jwt, { JwtPayload, Secret } from "jsonwebtoken";
-import { refreshTokenExpireSeconds, signTokens } from "../utils/jwt";
+import { isSessionActive, signIn } from "../utils/jwt";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import ErrorHandler from "../utils/ErrorHandler";
 import { env } from "../utils/env";
@@ -43,21 +43,17 @@ function stateKey(state: string): string {
   return `im8:state:${state}`;
 }
 
-async function issueApiceTokens(
-  userId: string
-): Promise<{ accessToken: string; refreshToken: string }> {
-  // Shared signing: env-driven lifetimes + refresh-token jti whitelist.
-  const { accessToken, refreshToken } = await signTokens(userId);
-  return { accessToken, refreshToken };
-}
-
 async function resolveLinkingUser(
   accessToken: string | undefined
 ): Promise<{ id: string } | null> {
   if (!accessToken) return null;
   try {
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN as Secret) as JwtPayload;
-    if (!decoded?.id) return null;
+    if (!decoded?.id || !decoded?.sid) return null;
+    // A signed-out device's token must not be able to link an identity.
+    if (!(await isSessionActive(decoded.id, decoded.sid))) {
+      throw new ErrorHandler("Invalid Ápice access token", 401);
+    }
     return { id: decoded.id as string };
   } catch {
     throw new ErrorHandler("Invalid Ápice access token", 401);
@@ -271,19 +267,7 @@ export const completeIM8Login = CatchAsyncError(
       // Clean up the one-time pending state.
       await redis.del(stateKey(state));
 
-      const { accessToken, refreshToken } = await issueApiceTokens(user.id);
-      await redis.set(
-        user.id,
-        JSON.stringify(user),
-        "EX",
-        refreshTokenExpireSeconds
-      );
-
-      res.status(200).json({
-        success: true,
-        user,
-        accessToken,
-        refreshToken,
+      await signIn(req, res, user, 200, {
         iM8Session: {
           accessToken: pending.iM8AccessToken,
           sessionId: pending.sessionId,
