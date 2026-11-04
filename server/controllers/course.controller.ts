@@ -13,10 +13,9 @@ import { redis } from "../utils/redis";
 import { notify } from "../services/notification.service";
 import { COURSE_CACHE_TTL_SECONDS, courseCacheKey } from "../utils/cache";
 import { Prisma } from "@prisma/client";
-import path from "path";
-import ejs from "ejs";
 import sendMail from "../utils/sendMail";
 import { z } from "zod";
+import { logger } from "../utils/logger";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -102,6 +101,16 @@ async function buildReviews(courseId: string) {
       updatedAt: r.updatedAt,
     })),
   }));
+}
+
+/** Q&A is for the course's learners (and staff answering them). */
+async function canParticipate(req: Request, courseId: string) {
+  if (req.user?.role === "admin") return true;
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId: req.user!.id, courseId } },
+    select: { id: true },
+  });
+  return enrollment !== null;
 }
 
 // ─── Validation Schemas ─────────────────────────────────────────────
@@ -512,10 +521,15 @@ export const addQuestion = CatchAsyncError(
 
       const lesson = await prisma.courseLesson.findUnique({
         where: { id: contentId },
+        include: { section: { select: { courseId: true } } },
       });
 
-      if (!lesson) {
+      if (!lesson || lesson.section.courseId !== courseId) {
         return next(new ErrorHandler("Invalid content id", 400));
+      }
+
+      if (!(await canParticipate(req, courseId))) {
+        return next(new ErrorHandler("You are not enrolled in this course", 403));
       }
 
       const newQuestion = await prisma.question.create({
@@ -589,8 +603,19 @@ export const addAnwser = CatchAsyncError(
         },
       });
 
-      if (!question) {
+      if (!question || question.lessonId !== contentId) {
         return next(new ErrorHandler("Invalid question id", 400));
+      }
+      const questionLesson = await prisma.courseLesson.findUnique({
+        where: { id: question.lessonId },
+        select: { section: { select: { courseId: true } } },
+      });
+      if (questionLesson?.section.courseId !== courseId) {
+        return next(new ErrorHandler("Invalid question id", 400));
+      }
+
+      if (!(await canParticipate(req, courseId))) {
+        return next(new ErrorHandler("You are not enrolled in this course", 403));
       }
 
       const newAnswer = await prisma.answer.create({
@@ -616,11 +641,8 @@ export const addAnwser = CatchAsyncError(
           title: question.lesson.title,
         };
 
-        const html = await ejs.renderFile(
-          path.join(__dirname, "../mails/question-reply.ejs"),
-          data
-        );
-
+        // The answer is already saved: a mail failure is logged, not
+        // reported to the person who answered as if their answer failed.
         try {
           await sendMail({
             email: question.user.email,
@@ -629,7 +651,7 @@ export const addAnwser = CatchAsyncError(
             data,
           });
         } catch (error) {
-          return next(error);
+          logger.error({ err: error, questionId }, "question reply mail failed");
         }
       }
 
