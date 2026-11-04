@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-apice_prod}
     volumes:
       - apice_postgres_data:/var/lib/postgresql/data
-      - ./scripts/postgres-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+      - ./infra/scripts/ops/postgres-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apice} -d ${POSTGRES_DB:-apice_prod}"]
       interval: 5s
@@ -84,7 +84,7 @@ services:
       SEAWEED_FILER_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres}
       SEAWEED_FILER_POSTGRES_DATABASE: ${SEAWEED_FILER_POSTGRES_DATABASE:-apice_prod}
     volumes:
-      - ./scripts/seaweedfs-filer-init.sh:/usr/local/bin/seaweedfs-filer-init.sh:ro
+      - ./infra/scripts/ops/seaweedfs-filer-init.sh:/usr/local/bin/seaweedfs-filer-init.sh:ro
     entrypoint: ["/bin/sh", "/usr/local/bin/seaweedfs-filer-init.sh"]
     depends_on:
       postgres:
@@ -109,7 +109,7 @@ services:
       -port=8888
       -metricsPort=9326
     volumes:
-      - ./scripts/seaweedfs-filer-entrypoint.sh:/usr/local/bin/seaweedfs-filer-entrypoint.sh:ro
+      - ./infra/scripts/ops/seaweedfs-filer-entrypoint.sh:/usr/local/bin/seaweedfs-filer-entrypoint.sh:ro
       - seaweed_filer_data:/data
     entrypoint: ["/bin/sh", "/usr/local/bin/seaweedfs-filer-entrypoint.sh"]
     depends_on:
@@ -137,7 +137,7 @@ services:
       -config=/etc/seaweedfs/s3.json
       -metricsPort=9327
     volumes:
-      - ./scripts/seaweedfs-s3-entrypoint.sh:/usr/local/bin/seaweedfs-s3-entrypoint.sh:ro
+      - ./infra/scripts/ops/seaweedfs-s3-entrypoint.sh:/usr/local/bin/seaweedfs-s3-entrypoint.sh:ro
     entrypoint: ["/bin/sh", "/usr/local/bin/seaweedfs-s3-entrypoint.sh"]
     depends_on:
       seaweed-filer:
@@ -175,10 +175,10 @@ services:
   streamplace-node:
     build:
       context: .
-      dockerfile: streamplace/Dockerfile
+      dockerfile: infra/streamplace/Dockerfile
       args:
         # Package file ID from the Streamplace package registry.
-        # 786 = streamplace-v0.11.13-linux-amd64 (see streamplace/Dockerfile).
+        # 786 = streamplace-v0.11.13-linux-amd64 (see infra/streamplace/Dockerfile).
         STREAMPLACE_PACKAGE_FILE_ID: ${STREAMPLACE_PACKAGE_FILE_ID:-786}
     container_name: apice-prod-streamplace-node
     restart: unless-stopped
@@ -219,7 +219,7 @@ services:
   server:
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: apps/api/Dockerfile
     container_name: apice-prod-server
     restart: unless-stopped
     ports:
@@ -238,7 +238,7 @@ services:
       streamplace-node:
         condition: service_started
     env_file:
-      - server/.env.production
+      - apps/api/.env.production
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-apice}:${POSTGRES_PASSWORD:-change-me-postgres}@postgres:5432/${POSTGRES_DB:-apice_prod}?schema=public
       REDIS_URL: redis://redis:6379
@@ -260,17 +260,17 @@ services:
   indexer:
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: apps/api/Dockerfile
     container_name: apice-prod-indexer
     restart: unless-stopped
-    command: node server/build/workers/jetstreamIndexer.js
+    command: node apps/api/build/src/workers/jetstreamIndexer.js
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     env_file:
-      - server/.env.production
+      - apps/api/.env.production
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-apice}:${POSTGRES_PASSWORD:-change-me-postgres}@postgres:5432/${POSTGRES_DB:-apice_prod}?schema=public
       REDIS_URL: redis://redis:6379
@@ -281,7 +281,7 @@ services:
   admin:
     build:
       context: .
-      dockerfile: admin/Dockerfile
+      dockerfile: apps/admin/Dockerfile
       args:
         NEXT_PUBLIC_SERVER_URI: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}/api/v1
         NEXT_PUBLIC_SOCKET_SERVER_URI: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
@@ -294,7 +294,7 @@ services:
     ports:
       - "127.0.0.1:3010:3000"
     env_file:
-      - admin/.env.production
+      - apps/admin/.env.production
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.apice.example.com}
       # OAuth client-metadata route reads this at request time.
@@ -324,7 +324,7 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
@@ -378,7 +378,7 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - server/.env.production
+      - apps/api/.env.production
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-apice}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres}
@@ -390,7 +390,7 @@ services:
       SEAWEED_SECRET_KEY: ${SEAWEED_SECRET_KEY:-change-me-secret-key}
       SEAWEED_BACKUPS_BUCKET: ${SEAWEED_BACKUPS_BUCKET:-apice-backups}
     volumes:
-      - ./scripts/backup-postgres.sh:/usr/local/bin/backup-postgres.sh:ro
+      - ./infra/scripts/ops/backup-postgres.sh:/usr/local/bin/backup-postgres.sh:ro
     command: >
       sh -c "echo '0 3 * * * /usr/local/bin/backup-postgres.sh' | crontab - && crond -f"
     networks:

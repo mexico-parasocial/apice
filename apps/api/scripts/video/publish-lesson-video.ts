@@ -254,7 +254,7 @@ async function main() {
     });
     console.log(`✅ Attached to lesson: ${lesson.title}`);
   } else {
-    console.log(`\nAttach when ready:\n  pnpm --filter server exec ts-node-dev --transpile-only --no-notify --exit-child scripts/attach-lesson-video.ts "${uri}" --lesson <id>`);
+    console.log(`\nAttach when ready:\n  pnpm --filter @apice/api exec ts-node-dev --transpile-only --no-notify --exit-child scripts/video/attach-lesson-video.ts "${uri}" --lesson <id>`);
   }
 
   void did;

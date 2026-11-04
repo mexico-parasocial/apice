@@ -8,8 +8,8 @@ set -uo pipefail
 # probes first, then each dependency from inside the compose network.
 #
 # Usage:
-#   ./scripts/doctor.sh          # local docker-compose.yml
-#   ./scripts/doctor.sh --prod   # docker-compose.prod.yml
+#   ./infra/scripts/dev/doctor.sh          # local docker-compose.yml
+#   ./infra/scripts/dev/doctor.sh --prod   # docker-compose.prod.yml
 # ==============================================================================
 
 PROD=0

@@ -9,11 +9,11 @@ set -euo pipefail
 # reports the actual file sizes for comparison against the documented targets.
 #
 # Usage:
-#   ./scripts/validate-encoding-ladder.sh [sample-video.mp4]
+#   ./infra/scripts/video/validate-encoding-ladder.sh [sample-video.mp4]
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 PASS=0
 FAIL=0
@@ -43,7 +43,7 @@ echo
 
 # 2. Script defaults match the ladder
 echo "2. prepare-lesson-video.sh defaults"
-PREPARE_SCRIPT="$ROOT_DIR/scripts/prepare-lesson-video.sh"
+PREPARE_SCRIPT="$ROOT_DIR/infra/scripts/video/prepare-lesson-video.sh"
 if [ -f "$PREPARE_SCRIPT" ]; then
   DEFAULT_BITRATE=$(grep 'LESSON_VIDEO_BITRATE' "$PREPARE_SCRIPT" | grep -o '[0-9]*k' | head -1)
   DEFAULT_HEIGHT=$(grep 'LESSON_VIDEO_HEIGHT' "$PREPARE_SCRIPT" | grep -o '[0-9]*' | head -1)

@@ -104,7 +104,7 @@ async function fetchCourseContent(courseId: string): Promise<LessonContent[]> {
 
 /**
  * Publishes a course to the instructor's own PDS.
- * Mirrors server/services/atproto.service.ts publishCourseToPDS.
+ * Mirrors apps/api/src/modules/atproto/atproto.service.ts publishCourseToPDS.
  */
 export async function publishCourseToOwnPds(
   session: OAuthSession,

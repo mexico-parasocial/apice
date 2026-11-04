@@ -13,7 +13,7 @@ set -euo pipefail
 #
 # WHY THESE NUMBERS
 #
-# Measured against server/fixtures/videos/TESTCLIP.MP4 (1080x1920, 30fps, high motion):
+# Measured against apps/api/fixtures/videos/TESTCLIP.MP4 (1080x1920, 30fps, high motion):
 #
 #   1080x1920 @ 1.5 Mbps  VMAF 87.7   281 MB per 25-min program
 #    720x1280 @ 800 kbps  VMAF 82.0   150 MB
@@ -39,7 +39,7 @@ set -euo pipefail
 # a screen reader.
 #
 # Usage:
-#   ./scripts/prepare-lesson-video.sh entrada.mp4 [salida.mp4]
+#   ./infra/scripts/video/prepare-lesson-video.sh entrada.mp4 [salida.mp4]
 # ==============================================================================
 
 TARGET_BITRATE="${LESSON_VIDEO_BITRATE:-1500k}"
@@ -115,5 +115,5 @@ if [ "$IN_SIZE" -gt 0 ] && [ "$OUT_SIZE" -lt "$IN_SIZE" ]; then
 fi
 echo
 echo "Next: publish this file to the Streamplace node, then attach its AT URI:"
-echo "  cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \\"
+echo "  cd apps/api && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \\"
 echo "    scripts/attach-lesson-video.ts \"at://…/place.stream.video/…\" --first-only"

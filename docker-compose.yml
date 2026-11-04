@@ -32,7 +32,7 @@ services:
   server:
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: apps/api/Dockerfile
     container_name: apice-server
     environment:
       DATABASE_URL: postgresql://apice:apice@postgres:5432/apice_dev?schema=public
@@ -65,18 +65,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./server:/app
-      - /app/node_modules
 
   # Jetstream indexer — consumes app.civic.* records from the ATProto network
   # into the NetworkCourse table. Additive: the API works without it.
   indexer:
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: apps/api/Dockerfile
     container_name: apice-indexer
-    command: pnpm worker:indexer
+    command: node apps/api/build/src/workers/jetstreamIndexer.js
     environment:
       DATABASE_URL: postgresql://apice:apice@postgres:5432/apice_dev?schema=public
       REDIS_URL: redis://redis:6379
@@ -86,9 +83,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./server:/app
-      - /app/node_modules
     restart: unless-stopped
 
 volumes:

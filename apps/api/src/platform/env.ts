@@ -60,7 +60,8 @@ export type KnownEnvVar =
   | "ALLOW_DIRECT_VIDEO_URLS"
   | "METRICS_ENABLED"
   | "JETSTREAM_URL"
-  | "SENTRY_DSN";
+  | "SENTRY_DSN"
+  | "COOKIE_DOMAIN";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -142,7 +143,7 @@ export function loadEnv() {
         ...lines,
         "",
         `NODE_ENV=${process.env.NODE_ENV ?? "(unset)"}`,
-        "See server/.env.production.example for the full list.",
+        "See apps/api/.env.production.example for the full list.",
         "",
       ].join("\n")
     );

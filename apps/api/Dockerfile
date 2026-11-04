@@ -8,27 +8,26 @@ RUN corepack enable && corepack prepare pnpm@11.7.0 --activate
 # Copy workspace configuration so pnpm can resolve the monorepo lockfile.
 COPY package.json pnpm-workspace.yaml .npmrc pnpm-lock.yaml ./
 COPY patches ./patches
-COPY server/package.json ./server/
-# prisma generate is the server's postinstall — the schema must exist before
+COPY apps/api/package.json ./apps/api/
+# prisma generate is the API's postinstall — the schema must exist before
 # install, or the container build dies looking for it (CI installs from a
 # full checkout and never sees this).
-COPY server/prisma ./server/prisma
-COPY admin/package.json ./admin/
+COPY apps/api/prisma ./apps/api/prisma
+COPY apps/admin/package.json ./apps/admin/
+COPY apps/mobile/package.json ./apps/mobile/
 COPY packages/lexicons/package.json ./packages/lexicons/
-COPY packages/mobile/package.json ./packages/mobile/
-COPY packages/mobile-app/package.json ./packages/mobile-app/
 
 RUN pnpm install --frozen-lockfile
-# Deterministic lexicons compile (workspace lifecycle scripts don't always
-# re-run on cached installs).
 
-# Runtime workspace source the server imports (installed as a symlink to
-# packages/lexicons — without the source, both tsc and require() fail).
+# Runtime workspace source the API imports (installed as a symlink to
+# packages/lexicons — plain JS + JSON schemas, nothing to compile).
 COPY packages/lexicons ./packages/lexicons
-COPY server/. ./server/
+# Includes templates/ and fixtures/, resolved at runtime from the package
+# root (src/platform/paths.ts) — tsc does not copy them into build/.
+COPY apps/api/. ./apps/api/
 
-RUN pnpm --filter server exec prisma generate
-RUN pnpm --filter server build
+RUN pnpm --filter @apice/api exec prisma generate
+RUN pnpm --filter @apice/api build
 
 EXPOSE 8000
-CMD ["sh", "-c", "pnpm --filter server exec prisma migrate deploy && pnpm --filter server start"]
+CMD ["sh", "-c", "pnpm --filter @apice/api exec prisma migrate deploy && pnpm --filter @apice/api start"]

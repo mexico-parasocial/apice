@@ -5,19 +5,19 @@ set -e
 # Ápice Dev Environment Launcher (Inspired by bluesky-social/atproto)
 # ==============================================================================
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT_DIR"
 
 echo "🚀 [Ápice Dev-Env] Initializing development environment..."
 
-# 1. Ensure server/.env exists
-if [ ! -f "server/.env" ]; then
-  echo "📄 Creating server/.env from server/.env.example..."
-  cp server/.env.example server/.env
+# 1. Ensure apps/api/.env exists
+if [ ! -f "apps/api/.env" ]; then
+  echo "📄 Creating apps/api/.env from apps/api/.env.example..."
+  cp apps/api/.env.example apps/api/.env
 fi
 
 # 2. Cleanup stale infrastructure containers (Conflict Prevention)
-#    Only removes Postgres & Redis — leaves server/indexer/admin untouched so
+#    Only removes Postgres & Redis — leaves api/indexer/admin untouched so
 #    parallel dev processes are not killed.
 echo "🧹 Checking for stale infrastructure containers..."
 docker compose rm -fs postgres redis > /dev/null 2>&1 || true
@@ -43,7 +43,7 @@ echo "✅ Redis is ready."
 
 # 6. Apply database migrations
 echo "📦 Running Prisma database migrations..."
-(cd server && pnpm exec prisma migrate dev --name init_dev || pnpm exec prisma migrate deploy)
+(cd apps/api && pnpm exec prisma migrate deploy)
 echo "✅ Database schema is up to date."
 
 echo ""
@@ -52,5 +52,5 @@ echo "--------------------------------------------------------"
 echo "  • Server API:   pnpm dev:server    (http://localhost:8000)"
 echo "  • Admin Web:    pnpm dev:admin     (http://localhost:3000)"
 echo "  • Mobile Web:   pnpm web           (http://localhost:8081)"
-echo "  • Indexer:      pnpm --filter server worker:indexer"
+echo "  • Indexer:      pnpm --filter @apice/api worker:indexer"
 echo "--------------------------------------------------------"

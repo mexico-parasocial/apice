@@ -7,10 +7,10 @@
 
 # ── Dependencies & builds ────────────────────────────────────────────────
 node_modules/
-server/build/
-admin/.next/
-packages/mobile-app/dist/
-packages/mobile/dist/
+apps/api/build/
+apps/admin/.next/
+apps/mobile/dist/
+apps/mobile/web-build/
 *.tsbuildinfo
 
 # ── Expo / React Native ──────────────────────────────────────────────────
@@ -32,9 +32,10 @@ coverage/
 .zcode/
 
 # Lesson clips live on disk and on the Streamplace node — never in git.
-server/fixtures/videos/*.mp4
-!server/fixtures/videos/TESTCLIP.MP4
+apps/api/fixtures/videos/*.mp4
+!apps/api/fixtures/videos/TESTCLIP.MP4
 
 # Course source material stays local — it lives on disk and gets cut into
 # lesson clips; clips live on the Streamplace node. Git never carries video.
-assets/
+# Root-anchored: apps/mobile/assets and apps/admin/public/assets are code.
+/assets/

@@ -14,7 +14,7 @@ const placeholderThumb = {
 
 // Videos: se vinculan después de subir contenido real al nodo Streamplace
 // (admin → "Subir video nuevo"). Para demos locales sube
-// server/fixtures/videos/TESTCLIP.MP4 y pasa el AT URI resultante:
+// apps/api/fixtures/videos/TESTCLIP.MP4 y pasa el AT URI resultante:
 //   SEED_VIDEO_URL="at://did:.../place.stream.video/..." npx ts-node scripts/seed-courses.ts
 // Sin video, las lecciones quedan como "sin video" (estado válido) en vez de
 // apuntar a un placeholder de YouTube.

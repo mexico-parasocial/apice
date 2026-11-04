@@ -27,7 +27,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { WelcomeLogin } from "@/components/WelcomeLogin";
 
 /**
- * Seeded demo learner (server/scripts/seed-demo-users.ts). Exposed only behind
+ * Seeded demo learner (apps/api/scripts/seed/seed-demo-users.ts). Exposed only behind
  * __DEV__ as a one-tap prefill so demos don't depend on iM8 being up.
  */
 const DEMO_ACCOUNT = {
