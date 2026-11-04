@@ -3,37 +3,24 @@ import { redis } from "../utils/redis";
 import { prisma } from "../utils/db";
 import { SESSION_CACHE_TTL_SECONDS } from "../utils/cache";
 
-// get user by id
-export const getUserById = async (id: string, res: Response) => {
+// get user by id: the session cache first, then the database. Resolves to
+// null when the user does not exist; the caller decides what to answer.
+export const getUserById = async (id: string) => {
   const userJson = await redis.get(id);
-
   if (userJson) {
-    const user = JSON.parse(userJson);
-    res.status(200).json({
-      success: true,
-      user,
-    });
-  } else {
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
+    return JSON.parse(userJson);
+  }
 
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-      return;
-    }
+  const user = await prisma.user.findUnique({
+    where: { id },
+  });
 
+  if (user) {
     // Cache the user for future requests
     await redis.set(id, JSON.stringify(user), "EX", SESSION_CACHE_TTL_SECONDS);
-
-    res.status(200).json({
-      success: true,
-      user,
-    });
   }
+
+  return user;
 };
 
 // Get All users
@@ -75,11 +62,7 @@ export const getAllUsersService = async (
 };
 
 // update user role
-export const updateUserRoleService = async (
-  res: Response,
-  id: string,
-  role: string
-) => {
+export const updateUserRoleService = async (id: string, role: string) => {
   const user = await prisma.user.update({
     where: { id },
     data: { role },
@@ -90,8 +73,5 @@ export const updateUserRoleService = async (
   // (the cache TTL) to affect what the user can actually do.
   await redis.del(id);
 
-  res.status(200).json({
-    success: true,
-    user,
-  });
+  return user;
 };

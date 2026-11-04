@@ -233,7 +233,7 @@ export const getAllOrders = CatchAsyncError(
         200,
         Math.max(1, parseInt(req.query.limit as string, 10) || 50)
       );
-      getAllOrdersService(res, page, limit);
+      await getAllOrdersService(res, page, limit);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }

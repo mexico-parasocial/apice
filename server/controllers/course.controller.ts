@@ -6,10 +6,12 @@ import cloudinary from "cloudinary";
 import {
   createCourse,
   getAllCoursesService,
+  refreshCourseRating,
   syncCourseContent,
 } from "../services/course.service";
 import { redis } from "../utils/redis";
-import { COURSE_CACHE_TTL_SECONDS } from "../utils/cache";
+import { COURSE_CACHE_TTL_SECONDS, courseCacheKey } from "../utils/cache";
+import { Prisma } from "@prisma/client";
 import path from "path";
 import ejs from "ejs";
 import sendMail from "../utils/sendMail";
@@ -230,7 +232,7 @@ export const editCourse = CatchAsyncError(
       });
 
       // Invalidate the public course cache so edits are visible immediately.
-      await redis.del(courseId);
+      await redis.del(courseCacheKey(courseId));
 
       res.status(200).json({
         success: true,
@@ -248,7 +250,7 @@ export const getSingleCourse = CatchAsyncError(
     try {
       const courseId = req.params.id;
 
-      const isCacheExist = await redis.get(courseId);
+      const isCacheExist = await redis.get(courseCacheKey(courseId));
 
       if (isCacheExist) {
         const course = JSON.parse(isCacheExist);
@@ -283,7 +285,12 @@ export const getSingleCourse = CatchAsyncError(
           }),
         };
 
-        await redis.set(courseId, JSON.stringify(publicCourse), "EX", COURSE_CACHE_TTL_SECONDS);
+        await redis.set(
+          courseCacheKey(courseId),
+          JSON.stringify(publicCourse),
+          "EX",
+          COURSE_CACHE_TTL_SECONDS
+        );
 
         res.status(200).json({
           success: true,
@@ -665,24 +672,12 @@ export const addReview = CatchAsyncError(
         },
       });
 
-      // Recalculate average rating in the database, not in JS — loading
-      // every review to average five of them doesn't scale.
-      const agg = await prisma.review.aggregate({
-        where: { courseId },
-        _avg: { rating: true },
-      });
+      await refreshCourseRating(courseId);
 
-      // NOTE: `purchased` is deliberately not written here. It counts
-      // orders (see order.service) and this handler previously overwrote
-      // it with the review count, corrupting the counter on every review.
-      const updatedCourse = await prisma.course.update({
-        where: { id: courseId },
-        data: {
-          ratings: agg._avg.rating ?? 0,
-        },
-      });
-
-      await redis.set(courseId, JSON.stringify(updatedCourse), "EX", COURSE_CACHE_TTL_SECONDS);
+      // The cached public course carries the reviews and the rating, so drop
+      // it; the next GET rebuilds the full view. Writing the bare course row
+      // here would serve a course with no curriculum and no reviews.
+      await redis.del(courseCacheKey(courseId));
 
       await prisma.notification.create({
         data: {
@@ -751,6 +746,10 @@ export const addReplyToReview = CatchAsyncError(
         },
       });
 
+      // Replies are part of the cached public course view. Key off the
+      // review's own course: that is where the reply is rendered.
+      await redis.del(courseCacheKey(review.courseId));
+
       res.status(200).json({
         success: true,
         reply,
@@ -765,9 +764,13 @@ export const addReplyToReview = CatchAsyncError(
 export const getAdminAllCourses = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      getAllCoursesService(res);
+      const courses = await getAllCoursesService();
+      res.status(200).json({
+        success: true,
+        courses,
+      });
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
@@ -786,18 +789,38 @@ export const deleteCourse = CatchAsyncError(
         return next(new ErrorHandler("course not found", 404));
       }
 
+      // Order.course is ON DELETE RESTRICT: orders are financial records, and
+      // the course is what says what was bought and for how much. Say so
+      // plainly rather than letting the delete fail on the foreign key.
+      const orderCount = await prisma.order.count({
+        where: { courseId: id },
+      });
+      if (orderCount > 0) {
+        return next(
+          new ErrorHandler(
+            `This course has ${orderCount} order${orderCount === 1 ? "" : "s"} and cannot be deleted: orders are kept as financial records.`,
+            409
+          )
+        );
+      }
+
       await prisma.course.delete({
         where: { id },
       });
 
-      await redis.del(id);
+      await redis.del(courseCacheKey(id));
 
       res.status(200).json({
         success: true,
         message: "course deleted successfully",
       });
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      // An order created between the count and the delete still trips the
+      // foreign key; the error middleware maps that to a clean 409.
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        return next(error);
+      }
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
