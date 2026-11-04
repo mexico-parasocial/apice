@@ -1,0 +1,35 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PilotBucketLocation",
+      "Effect": "Allow",
+      "Action": "s3:GetBucketLocation",
+      "Resource": "arn:aws:s3:::apice-942752161853-us-east-2-an",
+      "Condition": { "Bool": { "aws:SecureTransport": "true" } }
+    },
+    {
+      "Sid": "ListOnlyPilotPrefix",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::apice-942752161853-us-east-2-an",
+      "Condition": {
+        "StringLike": { "s3:prefix": ["apice-pilot", "apice-pilot/*"] },
+        "Bool": { "aws:SecureTransport": "true" }
+      }
+    },
+    {
+      "Sid": "PilotObjectsAndMultipart",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": "arn:aws:s3:::apice-942752161853-us-east-2-an/apice-pilot/*",
+      "Condition": { "Bool": { "aws:SecureTransport": "true" } }
+    }
+  ]
+}

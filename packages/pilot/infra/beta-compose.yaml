@@ -1,0 +1,72 @@
+name: apice-beta
+
+# Separate from both apice-spaces-pilot and the legacy production Compose.
+# Native VLPDS and the app run on the Mac. All published ports are loopback.
+services:
+  storage:
+    # Cached image IDs on this Mac, not registry manifest digests.
+    image: ${BETA_MINIO_IMAGE:-sha256:a43c79386a4b3d6ff1fe67ea425b9e9980ee1b1c2b10229f396f9d6a3fd05f84}
+    pull_policy: never
+    restart: unless-stopped
+    command: server /data --address :9000
+    mem_limit: 768m
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/s3_access
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/s3_secret
+    secrets: [s3_access, s3_secret]
+    ports: ["127.0.0.1:22595:9000"]
+    volumes: ["beta_objects:/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  buckets:
+    image: ${BETA_MINIO_IMAGE:-sha256:a43c79386a4b3d6ff1fe67ea425b9e9980ee1b1c2b10229f396f9d6a3fd05f84}
+    pull_policy: never
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        mc alias set beta http://storage:9000 "$$(cat /run/secrets/s3_access)" "$$(cat /run/secrets/s3_secret)" >/dev/null
+        mc mb --ignore-existing beta/apice-beta-pds beta/apice-beta-videos
+    secrets: [s3_access, s3_secret]
+    depends_on:
+      storage: { condition: service_healthy }
+  streamplace:
+    profiles: [video]
+    image: ${BETA_STREAMPLACE_IMAGE:-sha256:49274034a8adc6e4f65faeb4219c95473ce45fa2fe5dd350ab855cbb58674bb2}
+    pull_policy: never
+    restart: unless-stopped
+    mem_limit: 2g
+    cpus: 2
+    entrypoint: ["/bin/sh", "/beta/streamplace-entrypoint.sh"]
+    environment:
+      SP_HTTP_ADDR: 0.0.0.0:38080
+      SP_BROADCASTER_HOST: vod.para-g0v.site
+      SP_SERVER_HOST: vod.para-g0v.site
+      SP_BEHIND_HTTPS_PROXY: "true"
+      SP_DEV_PUBLIC_OAUTH: "false"
+      SP_WIDE_OPEN: "false"
+      # An empty list is OPEN in v0.11.13 even with SP_WIDE_OPEN=false.
+      SP_ALLOWED_STREAMS: ${BETA_INSTRUCTOR_DIDS:-disabled-until-instructor-configured}
+      SP_DB_URL: sqlite:///root/.streamplace/state.sqlite
+      SP_LOCAL_DB_URL: sqlite:///root/.streamplace/localdb.sqlite
+      SP_S3_ENDPOINT: http://storage:9000
+      SP_S3_BUCKET: apice-beta-videos
+      SP_S3_REGION: us-east-1
+      SP_VOD_CONCURRENCY: 1
+      SP_RELAY_HOST: wss://pds.para-g0v.site
+    ports: ["127.0.0.1:28080:38080"]
+    secrets: [s3_access, s3_secret]
+    volumes: ["beta_streamplace:/root/.streamplace", "./beta-streamplace-entrypoint.sh:/beta/streamplace-entrypoint.sh:ro"]
+    depends_on:
+      buckets: { condition: service_completed_successfully }
+
+secrets:
+  s3_access:
+    file: ../.local/beta/secrets/s3-access
+  s3_secret:
+    file: ../.local/beta/secrets/s3-secret
+volumes:
+  beta_objects:
+  beta_streamplace:

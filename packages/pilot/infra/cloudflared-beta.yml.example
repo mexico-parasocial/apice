@@ -1,0 +1,18 @@
+# Apply only after beta acceptance. Never route these names to pilot ports.
+# Replace UUID and the credentials-file path after local Cloudflare login.
+tunnel: REPLACE_WITH_TUNNEL_UUID
+credentials-file: /ABSOLUTE/PATH/TO/TUNNEL_UUID.json
+ingress:
+  - hostname: para-g0v.site
+    service: http://127.0.0.1:28010
+    originRequest:
+      httpHostHeader: para-g0v.site
+  - hostname: pds.para-g0v.site
+    service: http://127.0.0.1:22583
+    originRequest:
+      httpHostHeader: pds.para-g0v.site
+  - hostname: vod.para-g0v.site
+    # Do not serve video bytes through the general-purpose Free Tunnel.
+    # Configure supported media delivery and its control routes first.
+    service: http_status:503
+  - service: http_status:404

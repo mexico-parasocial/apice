@@ -1,0 +1,25 @@
+{
+  "name": "@apice/pilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "dependencies": { "hls.js": "1.6.16" },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env src/main.mjs",
+    "media": "node --env-file-if-exists=.env src/media-server.mjs",
+    "start": "node src/main.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:live": "node --test test/live.mjs",
+    "check": "node scripts/check.mjs",
+    "test:media-auth": "node --test test/media-auth.mjs",
+    "test:durability": "node --test test/durability.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "setup": "node scripts/setup.mjs",
+    "beta:prepare": "node scripts/prepare-beta.mjs",
+    "beta:ui": "npm --prefix .local/vlpds/ui ci --no-audit --no-fund && npm --prefix .local/vlpds/ui run build",
+    "beta:pds": "node scripts/beta-pds.mjs",
+    "beta:app": "node --env-file=.local/beta/app.env src/main.mjs",
+    "beta:check": "node scripts/beta-check.mjs"
+  }
+}

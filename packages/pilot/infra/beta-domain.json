@@ -1,0 +1,11 @@
+{
+  "domain": "para-g0v.site",
+  "hosting": "user-mac-with-cloudflare-tunnel",
+  "origins": {
+    "app": "https://para-g0v.site",
+    "pds": "https://pds.para-g0v.site",
+    "video": "https://vod.para-g0v.site"
+  },
+  "loopbackPorts": { "app": 28010, "pds": 22583, "pdsAdmin": 22584, "pdsMetrics": 22585, "video": 28080, "storage": 22595 },
+  "publiclyDeployed": false
+}
