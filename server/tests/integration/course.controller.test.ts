@@ -74,9 +74,9 @@ describe("GET /api/v1/get-course/:id", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.course).toMatchObject({ courseData: [], reviews: [] });
-    expect(redis.get).toHaveBeenCalledWith("course:course-1");
+    expect(redis.get).toHaveBeenCalledWith("course:v2:course-1");
     expect(redis.set).toHaveBeenCalledWith(
-      "course:course-1",
+      "course:v2:course-1",
       expect.any(String),
       "EX",
       expect.any(Number)
@@ -99,7 +99,7 @@ describe("PUT /api/v1/add-review/:id", () => {
       .send({ review: "Great", rating: 4 });
 
     expect(res.status).toBe(200);
-    expect(redis.del).toHaveBeenCalledWith("course:course-1");
+    expect(redis.del).toHaveBeenCalledWith("course:v2:course-1");
     // The bare course row must never be written over the enriched view.
     expect(redis.set).not.toHaveBeenCalled();
   });
@@ -130,7 +130,7 @@ describe("PUT /api/v1/add-reply", () => {
       .send({ comment: "Thanks!", courseId: "course-1", reviewId: "rev-1" });
 
     expect(res.status).toBe(200);
-    expect(redis.del).toHaveBeenCalledWith("course:course-1");
+    expect(redis.del).toHaveBeenCalledWith("course:v2:course-1");
     expect(redis.set).not.toHaveBeenCalled();
   });
 });
@@ -182,7 +182,7 @@ describe("DELETE /api/v1/delete-course/:id", () => {
 
     expect(res.status).toBe(200);
     expect(prisma.course.delete).toHaveBeenCalledWith({ where: { id: "course-1" } });
-    expect(redis.del).toHaveBeenCalledWith("course:course-1");
+    expect(redis.del).toHaveBeenCalledWith("course:v2:course-1");
   });
 
   it("maps a foreign key race (P2003) to a clean 409", async () => {
