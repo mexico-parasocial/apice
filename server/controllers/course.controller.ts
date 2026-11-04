@@ -106,6 +106,24 @@ async function buildReviews(courseId: string) {
 
 // ─── Validation Schemas ─────────────────────────────────────────────
 
+/**
+ * One lesson in the editor payload. Only these fields are read by
+ * syncCourseContent; unknown editor fields (links, suggestion, …) pass
+ * through untouched and are ignored.
+ */
+const optionalNumber = z.preprocess(
+  (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+  z.number().int().nonnegative().nullable()
+);
+const lessonItemSchema = z.looseObject({
+  id: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().nullable().optional(),
+  videoUrl: z.string().nullable().optional(),
+  videoLength: optionalNumber.optional(),
+  videoSection: z.string().optional(),
+});
+
 const courseCreateSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
@@ -119,7 +137,7 @@ const courseCreateSchema = z.object({
   categories: z.string().min(1),
   benefits: z.array(z.object({ title: z.string() })).default([]),
   prerequisites: z.array(z.object({ title: z.string() })).default([]),
-  courseData: z.array(z.any()).default([]),
+  courseData: z.array(lessonItemSchema).default([]),
 });
 
 const courseUpdateSchema = z.object({
@@ -134,7 +152,8 @@ const courseUpdateSchema = z.object({
   categories: z.string().min(1).optional(),
   benefits: z.array(z.object({ title: z.string() })).optional(),
   prerequisites: z.array(z.object({ title: z.string() })).optional(),
-  courseData: z.array(z.any()).optional(),
+  courseData: z.array(lessonItemSchema).optional(),
+  confirmDeleteLessonsWithProgress: z.boolean().optional(),
 });
 
 // ─── Controllers ────────────────────────────────────────────────────
@@ -166,8 +185,8 @@ export const uploadCourse = CatchAsyncError(
         };
       }
       createCourse(data, res, next);
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -222,7 +241,11 @@ export const editCourse = CatchAsyncError(
         };
       }
 
-      const { courseData: contentItems, ...updateFields } = data;
+      const {
+        courseData: contentItems,
+        confirmDeleteLessonsWithProgress,
+        ...updateFields
+      } = data;
 
       const course = await prisma.$transaction(async (tx) => {
         const updated = await tx.course.update({
@@ -230,7 +253,9 @@ export const editCourse = CatchAsyncError(
           data: updateFields,
         });
         if (Array.isArray(contentItems)) {
-          await syncCourseContent(courseId, contentItems, tx);
+          await syncCourseContent(courseId, contentItems, tx, {
+            confirmDeleteLessonsWithProgress,
+          });
         }
         return updated;
       });
@@ -242,8 +267,8 @@ export const editCourse = CatchAsyncError(
         success: true,
         course,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -301,8 +326,8 @@ export const getSingleCourse = CatchAsyncError(
           course: publicCourse,
         });
       }
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -326,8 +351,8 @@ export const getAdminCourseContent = CatchAsyncError(
         success: true,
         content,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -415,8 +440,8 @@ export const getAllCourses = CatchAsyncError(
           hasMore: page * limit < total,
         },
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -449,8 +474,8 @@ export const getCourseByUser = CatchAsyncError(
         course,
         content,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -519,8 +544,8 @@ export const addQuestion = CatchAsyncError(
         success: true,
         question: newQuestion,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -603,8 +628,8 @@ export const addAnwser = CatchAsyncError(
             template: "question-reply.ejs",
             data,
           });
-        } catch (error: any) {
-          return next(new ErrorHandler(error.message, 500));
+        } catch (error) {
+          return next(error);
         }
       }
 
@@ -612,8 +637,8 @@ export const addAnwser = CatchAsyncError(
         success: true,
         answer: newAnswer,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -689,8 +714,8 @@ export const addReview = CatchAsyncError(
         success: true,
         review: newReview,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -752,8 +777,8 @@ export const addReplyToReview = CatchAsyncError(
         success: true,
         reply,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -767,8 +792,8 @@ export const getAdminAllCourses = CatchAsyncError(
         success: true,
         courses,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

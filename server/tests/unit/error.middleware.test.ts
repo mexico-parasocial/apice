@@ -55,4 +55,26 @@ describe("ErrorMiddleware", () => {
 
     expect(status).toBe(500);
   });
+
+  it("maps a unique-constraint failure (P2002) to 409", () => {
+    const { status } = run(prismaError("P2002", "Unique constraint failed on the fields: (`email`)"));
+    expect(status).toBe(409);
+  });
+
+  it("treats an unexpected error as a 500 and hides its message in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const { status, body } = run(new Error("connect ECONNREFUSED 10.0.0.5:5432"));
+      expect(status).toBe(500);
+      expect(body.message).toBe("Internal server error");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps a deliberate error's status and message", () => {
+    const { status, body } = run(new ErrorHandler("Lesson not found", 404));
+    expect(status).toBe(404);
+    expect(body.message).toBe("Lesson not found");
+  });
 });

@@ -38,7 +38,7 @@ const EditCategories = (props: Props) => {
 
   const handleCategoriesAdd = (id: any, value: string) => {
     setCategories((prevCategory: any) =>
-      prevCategory.map((i: any) => (i._id === id ? { ...i, title: value } : i))
+      prevCategory.map((i: any) => (i.id === id ? { ...i, title: value } : i))
     );
   };
 
@@ -46,7 +46,10 @@ const EditCategories = (props: Props) => {
     if (categories[categories.length - 1].title === "") {
       toast.error("Category title cannot be empty");
     } else {
-      setCategories((prevCategory: any) => [...prevCategory, { title: "" }]);
+      setCategories((prevCategory: any) => [
+        ...prevCategory,
+        { id: crypto.randomUUID(), title: "" },
+      ]);
     }
   };
 
@@ -89,7 +92,7 @@ const EditCategories = (props: Props) => {
                       className={`${styles.input} !w-[unset] !border-none !text-[20px]`}
                       value={item.title}
                       onChange={(e) =>
-                        handleCategoriesAdd(item._id, e.target.value)
+                        handleCategoriesAdd(item.id, e.target.value)
                       }
                       placeholder="Enter category title..."
                     />
@@ -97,7 +100,7 @@ const EditCategories = (props: Props) => {
                       className="dark:text-white text-black text-[18px] cursor-pointer"
                       onClick={() => {
                         setCategories((prevCategory: any) =>
-                          prevCategory.filter((i: any) => i._id !== item._id)
+                          prevCategory.filter((i: any) => i.id !== item.id)
                         );
                       }}
                     />

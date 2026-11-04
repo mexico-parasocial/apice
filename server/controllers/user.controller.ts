@@ -229,8 +229,8 @@ export const loginUser = CatchAsyncError(
 
       const { password: _discarded, ...safeUser } = user;
       await signIn(req, res, safeUser);
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -344,8 +344,8 @@ export const updateUserInfo = CatchAsyncError(
         success: true,
         user,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -404,8 +404,8 @@ export const updatePassword = CatchAsyncError(
         user: updatedUser,
         ...deliverTokens(req, res, tokens),
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -481,8 +481,8 @@ export const getAllUsers = CatchAsyncError(
         Math.max(1, parseInt(req.query.limit as string, 10) || 50)
       );
       await getAllUsersService(res, page, limit);
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+    } catch (error) {
+      return next(error);
     }
   }
 );

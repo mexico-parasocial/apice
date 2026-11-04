@@ -1,31 +1,23 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useSelector } from "react-redux";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 interface ProtectedProps {
   children: React.ReactNode;
 }
 
+/**
+ * Client-side gate for the admin pages. A convenience only: every admin API
+ * route enforces the role on the server (authorizeRoles("admin")).
+ */
 export default function AdminProtected({ children }: ProtectedProps) {
   const { user } = useSelector((state: any) => state.auth);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const router = useRouter();
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    if (user) {
-      const isAdminUser = user?.role === "admin";
-      if (isAdminUser) {
-        setIsAdmin(true);
-      } else {
-        redirect("/");
-      }
-    } else {
-      redirect("/");
-    }
-  }, [user]);
-
-  if (isAdmin === null) {
-    return null;
-  }
+    if (!isAdmin) router.replace("/");
+  }, [isAdmin, router]);
 
   return isAdmin ? <>{children}</> : null;
 }

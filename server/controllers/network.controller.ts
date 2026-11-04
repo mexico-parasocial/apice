@@ -61,8 +61,8 @@ export const getNetworkCourses = CatchAsyncError(
         courses,
         cursor: hasMore ? page[page.length - 1].indexedAt.toISOString() : null,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -141,8 +141,8 @@ export const getNetworkCourse = CatchAsyncError(
           indexedAt: course.indexedAt,
         },
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

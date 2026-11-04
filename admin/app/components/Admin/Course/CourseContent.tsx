@@ -225,7 +225,7 @@ const CourseContent: FC<Props> = ({
                       />
                     </div>
                     <StreamplaceVideoUpload
-                      lessonId={item._id || item.id}
+                      lessonId={item.id}
                       lessonTitle={item.title}
                       onLinked={(uri, durationSeconds) => {
                         const updatedData = [...courseContentData];
@@ -240,7 +240,7 @@ const CourseContent: FC<Props> = ({
                       o pega un AT URI ya publicado:
                     </p>
                     <StreamplaceVideoRef
-                      lessonId={item._id || item.id}
+                      lessonId={item.id}
                       videoUrl={item.videoUrl}
                       onChange={(value) => {
                         const updatedData = [...courseContentData];
@@ -281,7 +281,7 @@ const CourseContent: FC<Props> = ({
                       <br />
                     </div>
 
-                    <QuizEditor lessonId={item._id || item.id} />
+                    <QuizEditor lessonId={item.id} />
 
                     {item?.links.map((link: any, linkIndex: number) => (
                       <div className="mb-3 block" key={linkIndex}>

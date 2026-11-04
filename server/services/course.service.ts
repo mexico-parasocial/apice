@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { prisma } from "../utils/db";
+import ErrorHandler from "../utils/ErrorHandler";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import { Prisma } from "@prisma/client";
 
@@ -16,10 +17,21 @@ type TxClient = Prisma.TransactionClient;
  * without one are created; existing lessons omitted from the payload are
  * deleted. Sections are reused by title when possible.
  */
+export interface SyncCourseContentOptions {
+  /**
+   * Deleting a lesson cascades to every learner's progress on it, its Q&A
+   * and its quiz. Without this flag the sync refuses (409) when any lesson
+   * it would delete has learner progress, so an editor bug that drops a
+   * lesson id can't silently wipe progress.
+   */
+  confirmDeleteLessonsWithProgress?: boolean;
+}
+
 export async function syncCourseContent(
   courseId: string,
   items: any[],
-  tx?: TxClient
+  tx?: TxClient,
+  options: SyncCourseContentOptions = {}
 ) {
   const client: any = tx ?? prisma;
 
@@ -32,15 +44,33 @@ export async function syncCourseContent(
     items.filter((i) => i?.id).map((i) => i.id as string)
   );
 
-  // Delete lessons omitted from the payload (real removals by the editor).
-  const deletedLessonIds: string[] = [];
-  for (const section of existingSections) {
-    for (const lesson of section.lessons) {
-      if (!incomingLessonIds.has(lesson.id)) {
-        await client.courseLesson.delete({ where: { id: lesson.id } });
-        deletedLessonIds.push(lesson.id);
-      }
+  // Lessons omitted from the payload are removals by the editor.
+  const toDelete = existingSections.flatMap((section: any) =>
+    section.lessons.filter((lesson: any) => !incomingLessonIds.has(lesson.id))
+  );
+
+  if (toDelete.length > 0 && !options.confirmDeleteLessonsWithProgress) {
+    const withProgress = await client.enrollmentLesson.groupBy({
+      by: ["lessonId"],
+      where: { lessonId: { in: toDelete.map((l: any) => l.id) } },
+      _count: { _all: true },
+    });
+    if (withProgress.length > 0) {
+      const titles = toDelete
+        .filter((l: any) => withProgress.some((w: any) => w.lessonId === l.id))
+        .map((l: any) => `"${l.title}"`);
+      throw new ErrorHandler(
+        `This would delete ${titles.length} lesson(s) with learner progress: ${titles.join(", ")}. ` +
+          "Resend with confirmDeleteLessonsWithProgress: true to delete them anyway.",
+        409
+      );
     }
+  }
+
+  const deletedLessonIds: string[] = [];
+  for (const lesson of toDelete) {
+    await client.courseLesson.delete({ where: { id: lesson.id } });
+    deletedLessonIds.push(lesson.id);
   }
 
   // Drop the ATProto refs of deleted lessons. A dangling key is silently

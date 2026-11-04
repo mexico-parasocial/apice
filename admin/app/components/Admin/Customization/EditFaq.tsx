@@ -38,19 +38,19 @@ const EditFaq = (props: Props) => {
 
   const toggleQuestion = (id: any) => {
     setQuestions((prevQuestions) =>
-      prevQuestions.map((q) => (q._id === id ? { ...q, active: !q.active } : q))
+      prevQuestions.map((q) => (q.id === id ? { ...q, active: !q.active } : q))
     );
   };
 
   const handleQuestionChange = (id: any, value: string) => {
     setQuestions((prevQuestions) =>
-      prevQuestions.map((q) => (q._id === id ? { ...q, question: value } : q))
+      prevQuestions.map((q) => (q.id === id ? { ...q, question: value } : q))
     );
   };
 
   const handleAnswerChange = (id: any, value: string) => {
     setQuestions((prevQuestions) =>
-      prevQuestions.map((q) => (q._id === id ? { ...q, answer: value } : q))
+      prevQuestions.map((q) => (q.id === id ? { ...q, answer: value } : q))
     );
   };
 
@@ -58,6 +58,7 @@ const EditFaq = (props: Props) => {
     setQuestions([
       ...questions,
       {
+        id: crypto.randomUUID(),
         question: "",
         answer: "",
       },
@@ -99,21 +100,21 @@ const EditFaq = (props: Props) => {
           <dl className="space-y-8">
             {questions.map((q: any) => (
               <div
-                key={q._id}
+                key={q.id}
                 className={`${
-                  q._id !== questions[0]?._id && "border-t"
+                  q.id !== questions[0]?.id && "border-t"
                 } border-gray-200 pt-6`}
               >
                 <dt className="text-lg">
                   <button
                     className="flex items-start dark:text-white text-black justify-between w-full text-left focus:outline-none"
-                    onClick={() => toggleQuestion(q._id)}
+                    onClick={() => toggleQuestion(q.id)}
                   >
                     <input
                       className={`${styles.input} border-none`}
                       value={q.question}
                       onChange={(e: any) =>
-                        handleQuestionChange(q._id, e.target.value)
+                        handleQuestionChange(q.id, e.target.value)
                       }
                       placeholder={"Add your question..."}
                     />
@@ -133,7 +134,7 @@ const EditFaq = (props: Props) => {
                       className={`${styles.input} border-none`}
                       value={q.answer}
                       onChange={(e: any) =>
-                        handleAnswerChange(q._id, e.target.value)
+                        handleAnswerChange(q.id, e.target.value)
                       }
                       placeholder={"Add your answer..."}
                     />
@@ -142,7 +143,7 @@ const EditFaq = (props: Props) => {
                         className="dark:text-white text-black text-[18px] cursor-pointer"
                         onClick={() => {
                           setQuestions((prevQuestions) =>
-                            prevQuestions.filter((item) => item._id !== q._id)
+                            prevQuestions.filter((item) => item.id !== q.id)
                           );
                         }}
                       />

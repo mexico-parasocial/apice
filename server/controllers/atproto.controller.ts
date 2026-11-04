@@ -89,8 +89,8 @@ export const registerCourseAtprotoRef = CatchAsyncError(
         courseCid,
         lessonCount: Object.keys(lessonRefs).length,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -112,8 +112,8 @@ export const publishCourseToAtmosphere = CatchAsyncError(
         courseCid: result.courseCid,
         lessonUris: result.lessonUris,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -147,8 +147,8 @@ export const getCourseAtprotoRecord = CatchAsyncError(
         courseUri: course.atprotoUri,
         record,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

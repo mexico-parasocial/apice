@@ -2,8 +2,21 @@ import { Request, Response, NextFunction } from "express";
 import ErrorHandler from "../utils/ErrorHandler";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import { prisma } from "../utils/db";
+import { randomUUID } from "crypto";
 import cloudinary from "cloudinary";
 import { z } from "zod";
+
+/**
+ * FAQ and category items are JSON rows without a database id. The editor
+ * needs a stable key per row (it used Mongo's `_id`, which no longer exists,
+ * so editing one FAQ edited all of them). Rows written now carry an `id`;
+ * older rows get one on read.
+ */
+function withIds(items: unknown[]): unknown[] {
+  return items.map((item: any) =>
+    item && typeof item === "object" && !item.id ? { id: randomUUID(), ...item } : item
+  );
+}
 
 const layoutCreateSchema = z.object({
   type: z.enum(["Banner", "FAQ", "Categories"]),
@@ -11,9 +24,9 @@ const layoutCreateSchema = z.object({
   title: z.string().optional(),
   subTitle: z.string().optional(),
   faq: z
-    .array(z.object({ question: z.string(), answer: z.string() }))
+    .array(z.object({ id: z.string().optional(), question: z.string(), answer: z.string() }))
     .optional(),
-  categories: z.array(z.object({ title: z.string() })).optional(),
+  categories: z.array(z.object({ id: z.string().optional(), title: z.string() })).optional(),
 });
 
 // create layout
@@ -63,6 +76,7 @@ export const createLayout = CatchAsyncError(
           return next(new ErrorHandler("FAQ items are required", 400));
         }
         const faqItems = faq.map((item) => ({
+          id: item.id || randomUUID(),
           question: item.question,
           answer: item.answer,
         }));
@@ -78,6 +92,7 @@ export const createLayout = CatchAsyncError(
           return next(new ErrorHandler("Categories are required", 400));
         }
         const categoriesItems = categories.map((item) => ({
+          id: item.id || randomUUID(),
           title: item.title,
         }));
         await prisma.layout.create({
@@ -92,8 +107,8 @@ export const createLayout = CatchAsyncError(
         success: true,
         message: "Layout created successfully",
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -104,9 +119,9 @@ const layoutUpdateSchema = z.object({
   title: z.string().optional(),
   subTitle: z.string().optional(),
   faq: z
-    .array(z.object({ question: z.string(), answer: z.string() }))
+    .array(z.object({ id: z.string().optional(), question: z.string(), answer: z.string() }))
     .optional(),
-  categories: z.array(z.object({ title: z.string() })).optional(),
+  categories: z.array(z.object({ id: z.string().optional(), title: z.string() })).optional(),
 });
 
 // Edit layout
@@ -165,6 +180,7 @@ export const editLayout = CatchAsyncError(
           where: { type: "FAQ" },
         });
         const faqItems = faq.map((item) => ({
+          id: item.id || randomUUID(),
           question: item.question,
           answer: item.answer,
         }));
@@ -183,6 +199,7 @@ export const editLayout = CatchAsyncError(
           where: { type: "Categories" },
         });
         const categoriesItems = categories.map((item) => ({
+          id: item.id || randomUUID(),
           title: item.title,
         }));
         await prisma.layout.update({
@@ -197,8 +214,8 @@ export const editLayout = CatchAsyncError(
         success: true,
         message: "Layout Updated successfully",
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -211,12 +228,16 @@ export const getLayoutByType = CatchAsyncError(
       const layout = await prisma.layout.findFirst({
         where: { type },
       });
-      res.status(201).json({
+      res.status(200).json({
         success: true,
-        layout,
+        layout: layout && {
+          ...layout,
+          faq: withIds(layout.faq),
+          categories: withIds(layout.categories),
+        },
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

@@ -6,7 +6,7 @@ import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { styles } from "../../../app/styles/style";
 import { useLoginMutation } from "@/redux/features/auth/authApi";
 import { toast } from "react-hot-toast";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 type Props = {
   setRoute: (route: string) => void;
@@ -22,6 +22,7 @@ const schema = Yup.object().shape({
 });
 
 const Login: FC<Props> = ({ setRoute, setOpen, refetch }) => {
+  const router = useRouter();
   const [show, setShow] = useState(false);
   const [login, { isSuccess, error }] = useLoginMutation();
   const formik = useFormik({
@@ -35,7 +36,7 @@ const Login: FC<Props> = ({ setRoute, setOpen, refetch }) => {
   useEffect(() => {
     if (isSuccess) {
       toast.success("Login Successfully!");
-      redirect("/admin");
+      router.push("/admin");
     }
     if (error) {
       if ("data" in error) {

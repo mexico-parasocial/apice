@@ -63,8 +63,8 @@ export const getMyCertificates = CatchAsyncError(
         success: true,
         certificates,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -145,8 +145,8 @@ export const claimCertificate = CatchAsyncError(
         success: true,
         certificate: { ...certificate, downloadUrl },
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -177,8 +177,8 @@ export const downloadCertificate = CatchAsyncError(
           .replace(/\s+/g, "-")}.svg"`
       );
       res.status(200).send(certificate.svgContent);
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

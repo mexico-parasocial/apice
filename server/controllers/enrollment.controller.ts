@@ -22,8 +22,8 @@ export const checkEnrollment = CatchAsyncError(
         success: true,
         enrolled: Boolean(enrollment),
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -62,8 +62,8 @@ export const enrollFree = CatchAsyncError(
         success: true,
         enrollment,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+    } catch (error) {
+      return next(error);
     }
   }
 );

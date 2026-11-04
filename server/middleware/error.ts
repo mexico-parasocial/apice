@@ -46,6 +46,19 @@ export const ErrorMiddleware = (
     if (err.code === "P2025") {
       err = new ErrorHandler("Record not found", 404);
     }
+
+    // Unique constraint: the thing being created already exists.
+    if (err.code === "P2002") {
+      err = new ErrorHandler("This record already exists", 409);
+    }
+  }
+
+  // Anything that isn't a deliberate HTTP error (ErrorHandler, or a JWT /
+  // Prisma error mapped above) is our failure: 500, and in production its
+  // message stays in the logs — it can name tables, hosts or file paths.
+  const isDeliberate = err instanceof ErrorHandler;
+  if (!isDeliberate) {
+    err.statusCode = 500;
   }
 
   // 5xx means we broke; log the stack. 4xx is the caller's problem and would
@@ -57,8 +70,10 @@ export const ErrorMiddleware = (
     );
   }
 
+  const hideMessage =
+    !isDeliberate && process.env.NODE_ENV === "production";
   res.status(err.statusCode).json({
     success: false,
-    message: err.message,
+    message: hideMessage ? "Internal server error" : err.message,
   });
 };

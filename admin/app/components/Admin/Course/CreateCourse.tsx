@@ -7,18 +7,19 @@ import CourseContent from "./CourseContent";
 import CoursePreview from "./CoursePreview";
 import { useCreateCourseMutation } from "../../../../redux/features/courses/coursesApi";
 import { toast } from "react-hot-toast";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 type Props = {};
 
 const CreateCourse = (props: Props) => {
+  const router = useRouter();
   const [createCourse, { isLoading, isSuccess, error }] =
     useCreateCourseMutation();
 
   useEffect(() => {
     if (isSuccess) {
       toast.success("Course created successfully");
-      redirect("/admin/courses");
+      router.push("/admin/courses");
     }
     if (error) {
       if ("data" in error) {

@@ -30,7 +30,6 @@ export interface PublishResult {
 
 interface CourseBasics {
   id?: string;
-  _id?: string;
   name: string;
   description?: string;
   tags?: string;
@@ -111,7 +110,7 @@ export async function publishCourseToOwnPds(
   session: OAuthSession,
   course: CourseBasics
 ): Promise<PublishResult> {
-  const courseId = (course.id || course._id) as string;
+  const courseId = course.id as string;
   const content = await fetchCourseContent(courseId);
   if (content.length === 0) {
     throw new Error("El curso no tiene lecciones; crea el contenido primero");

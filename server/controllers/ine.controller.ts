@@ -34,8 +34,8 @@ export const getMyINEVerification = CatchAsyncError(
         success: true,
         verification,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -80,8 +80,8 @@ export const submitINEVerification = CatchAsyncError(
         success: true,
         verification: upsert,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -122,8 +122,8 @@ export const listINEVerifications = CatchAsyncError(
         success: true,
         verifications,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -146,8 +146,8 @@ export const reviewINEVerification = CatchAsyncError(
         success: true,
         verification: updated,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

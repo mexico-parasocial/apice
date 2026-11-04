@@ -113,7 +113,7 @@ const AllCourses: FC<Props> = ({ isTeam }) => {
     newData &&
       newData.forEach((item: any) => {
         rows.push({
-          id: item._id ?? item.id,
+          id: item.id,
           name: item.name,
           email: item.email,
           role: item.role,
@@ -125,7 +125,7 @@ const AllCourses: FC<Props> = ({ isTeam }) => {
     data &&
       data.users.forEach((item: any) => {
         rows.push({
-          id: item._id ?? item.id,
+          id: item.id,
           name: item.name,
           email: item.email,
           role: item.role,

@@ -11,7 +11,7 @@ import {
   useGetAdminCourseContentQuery,
 } from "../../../../redux/features/courses/coursesApi";
 import { toast } from "react-hot-toast";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 type Props = {
   id: string;
@@ -27,14 +27,18 @@ const EditCourse: FC<Props> = ({ id }) => {
     skip: !id,
   });
 
-  const editCourseData = data && data.courses.find((i: any) => i._id === id);
+  const router = useRouter();
+  const editCourseData = data && data.courses.find((i: any) => i.id === id);
 
   useEffect(() => {
     if (isSuccess) {
       toast.success("Course Updated successfully");
-      redirect("/admin/courses");
+      router.push("/admin/courses");
     }
     if (error) {
+      const status = (error as any).status;
+      const message = (error as any).data?.message ?? "";
+      if (status === 409 && /learner progress/.test(message)) return; // handled by confirm()
       if ("data" in error) {
         const errorMessage = error as any;
         toast.error(errorMessage.data.message);
@@ -60,10 +64,7 @@ const EditCourse: FC<Props> = ({ id }) => {
       setBenefits(editCourseData.benefits);
       setPrerequisites(editCourseData.prerequisites);
       const relationalContent =
-        adminContentData?.content?.map((item: any) => ({
-          ...item,
-          _id: item.id,
-        })) || [];
+        adminContentData?.content || [];
       setCourseContentData(
         relationalContent.length > 0
           ? relationalContent
@@ -150,9 +151,21 @@ const EditCourse: FC<Props> = ({ id }) => {
   };
 
   const handleCourseCreate = async (e: any) => {
-    const data = courseData;
-    console.log(data);
-    await editCourse({ id, data });
+    const result = await editCourse({ id, data: courseData });
+    // The API refuses (409) to delete lessons that learners have progress
+    // on unless the editor confirms: deleting cascades to that progress.
+    const err = (result as any).error;
+    if (err?.status === 409 && /learner progress/.test(err?.data?.message ?? "")) {
+      const ok = window.confirm(
+        `${err.data.message}\n\nDeleting these lessons permanently erases every learner's progress on them. Delete anyway?`
+      );
+      if (ok) {
+        await editCourse({
+          id,
+          data: { ...courseData, confirmDeleteLessonsWithProgress: true },
+        });
+      }
+    }
   };
 
   return (

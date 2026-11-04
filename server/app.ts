@@ -17,6 +17,7 @@ import path from "path";
 import fs from "fs";
 import cookieParser from "cookie-parser";
 import { ErrorMiddleware } from "./middleware/error";
+import ErrorHandler from "./utils/ErrorHandler";
 import userRouter from "./routes/user.route";
 import courseRouter from "./routes/course.route";
 import orderRouter from "./routes/order.route";
@@ -235,9 +236,7 @@ app.get("/test", (req: Request, res: Response, next: NextFunction) => {
 
 // unknown route
 app.all("*", (req: Request, res: Response, next: NextFunction) => {
-  const err = new Error(`Route ${req.originalUrl} not found`) as any;
-  err.statusCode = 404;
-  next(err);
+  next(new ErrorHandler(`Route ${req.originalUrl} not found`, 404));
 });
 
 // middleware calls

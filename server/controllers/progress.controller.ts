@@ -122,8 +122,8 @@ export const getProgress = CatchAsyncError(
         lastAccessedAt: enrollment?.lastAccessedAt ?? null,
         lessons: flatLessons,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -203,8 +203,8 @@ export const getAllProgress = CatchAsyncError(
         success: true,
         enrollments,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

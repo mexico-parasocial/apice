@@ -57,8 +57,10 @@ describe("createOrder error handling", () => {
     // Ensure error was forwarded via next()
     expect(next).toHaveBeenCalledTimes(1);
     const errorArg = next.mock.calls[0][0];
+    // The original error is forwarded; ErrorMiddleware turns anything that
+    // isn't a deliberate ErrorHandler into a 500.
     expect(errorArg.message).toBe("Connection lost");
-    expect(errorArg.statusCode).toBe(500);
+    expect(errorArg.statusCode).toBeUndefined();
   });
 
   it("returns 404 when user is not found", async () => {

@@ -132,8 +132,8 @@ export const createOrder = CatchAsyncError(
         success: true,
         order,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -218,8 +218,8 @@ export const createMobileOrder = CatchAsyncError(
         success: true,
         order,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -234,8 +234,8 @@ export const getAllOrders = CatchAsyncError(
         Math.max(1, parseInt(req.query.limit as string, 10) || 50)
       );
       await getAllOrdersService(res, page, limit);
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -312,8 +312,8 @@ export const newPayment = CatchAsyncError(
         success: true,
         client_secret: myPayment.client_secret,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

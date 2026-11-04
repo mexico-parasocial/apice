@@ -42,7 +42,7 @@ const AllCourses = (props: Props) => {
 
       if (session) {
         const course = data?.courses?.find(
-          (c: any) => (c._id || c.id) === id
+          (c: any) => c.id === id
         );
         if (!course) throw new Error("Curso no encontrado");
         const result = await publishCourseToOwnPds(session, course);
@@ -160,7 +160,7 @@ const AllCourses = (props: Props) => {
     data &&
       data.courses.forEach((item: any) => {
         rows.push({
-          id: item._id ?? item.id,
+          id: item.id,
           title: item.name,
           ratings: item.ratings,
           purchased: item.purchased,

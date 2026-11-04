@@ -26,8 +26,8 @@ export const getMyNotifications = CatchAsyncError(
         success: true,
         notifications,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -56,8 +56,8 @@ export const getNotifications = CatchAsyncError(
         success: true,
         notifications,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -86,8 +86,8 @@ export const updateNotification = CatchAsyncError(
         success: true,
         notification: updated,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

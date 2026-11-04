@@ -33,10 +33,10 @@ const AllInvoices = ({ isDashboard }: Props) => {
     if (data) {
       const temp = data.orders.map((item: any) => {
         const user = usersData?.users.find(
-          (user: any) => (user._id ?? user.id) === item.userId
+          (user: any) => user.id === item.userId
         );
         const course = coursesData?.courses.find(
-          (course: any) => (course._id ?? course.id) === item.courseId
+          (course: any) => course.id === item.courseId
         );
         return {
           ...item,
@@ -86,7 +86,7 @@ const AllInvoices = ({ isDashboard }: Props) => {
   orderData &&
     orderData.forEach((item: any) => {
       rows.push({
-        id: item._id ?? item.id,
+        id: item.id,
         userName: item.userName,
         userEmail: item.userEmail,
         title: item.title,

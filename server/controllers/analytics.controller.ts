@@ -23,8 +23,8 @@ export const getUsersAnalytics = CatchAsyncError(
         success: true,
         users,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -48,8 +48,8 @@ export const getCoursesAnalytics = CatchAsyncError(
         success: true,
         courses,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -73,8 +73,8 @@ export const getOrderAnalytics = CatchAsyncError(
         success: true,
         orders,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );

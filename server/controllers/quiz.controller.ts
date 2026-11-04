@@ -87,8 +87,8 @@ export const createQuiz = CatchAsyncError(
       });
 
       res.status(200).json({ success: true, quiz });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -117,8 +117,8 @@ export const deleteQuiz = CatchAsyncError(
       ]);
 
       res.status(200).json({ success: true });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -167,8 +167,8 @@ export const getQuiz = CatchAsyncError(
         success: true,
         quiz: { ...quiz, questions: sanitizedQuestions },
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -300,8 +300,8 @@ export const submitQuiz = CatchAsyncError(
         correctCount,
         total,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
@@ -329,8 +329,8 @@ export const getQuizResult = CatchAsyncError(
         success: true,
         result,
       });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    } catch (error) {
+      return next(error);
     }
   }
 );
