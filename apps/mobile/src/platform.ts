@@ -4,7 +4,7 @@
  * web).
  *
  * Usage:
- *   import { isNative, isWeb, platform } from "@apice/mobile";
+ *   import { isNative, isWeb, platform } from "@/platform";
  *   const behavior = platform({ ios: "a", android: "b", default: "c" });
  *
  * For platform-specific module implementations, use file suffixes:

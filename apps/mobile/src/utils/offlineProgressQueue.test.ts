@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   enqueueProgress,

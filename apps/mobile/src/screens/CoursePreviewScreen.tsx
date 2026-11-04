@@ -11,15 +11,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  AlfText,
-  atoms as a,
-  ContentContainer,
-  ErrorState,
-  LoadingState,
-  useTheme,
-  type CourseLesson,
-} from "@apice/mobile";
+import { Text as AlfText } from "@/ui/alf/typography";
+import { atoms as a, useTheme } from "@/ui/alf";
+import { ContentContainer } from "@/components/ContentContainer";
+import { ErrorState, LoadingState } from "@/components/states";
+import type { CourseLesson } from "@/hooks/useCourses";
 import { useCourse } from "@/api/hooks";
 import { RootStackParamList } from "@/navigation/RootNavigator";
 

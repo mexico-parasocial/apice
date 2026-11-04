@@ -1,12 +1,10 @@
-import {
-  makeCoursesHooks,
-  makeCourseProgressHooks,
-  makeEnrollmentHooks,
-  makeVideoDeliveryHooks,
-  makeCertificateHooks,
-  makeIM8AuthHooks,
-  makePasswordAuthHooks,
-} from "@apice/mobile";
+import { makeCoursesHooks } from "@/hooks/useCourses";
+import { makeCourseProgressHooks } from "@/hooks/useCourseProgress";
+import { makeEnrollmentHooks } from "@/hooks/useEnrollment";
+import { makeVideoDeliveryHooks } from "@/hooks/useVideoDelivery";
+import { makeCertificateHooks } from "@/hooks/useCertificates";
+import { makeIM8AuthHooks } from "@/hooks/useIM8Auth";
+import { makePasswordAuthHooks } from "@/hooks/usePasswordAuth";
 import { api } from "./client";
 import { API_URL } from "@/env";
 

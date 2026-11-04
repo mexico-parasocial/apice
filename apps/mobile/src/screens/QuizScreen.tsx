@@ -11,13 +11,9 @@ import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AlfText,
-  atoms as a,
-  makeCourseProgressHooks,
-  useTheme,
-  type QuizQuestion,
-} from "@apice/mobile";
+import { Text as AlfText } from "@/ui/alf/typography";
+import { atoms as a, useTheme } from "@/ui/alf";
+import { makeCourseProgressHooks, type QuizQuestion } from "@/hooks/useCourseProgress";
 import { useQuiz, useSubmitQuiz } from "@/api/hooks";
 import { RootStackParamList } from "@/navigation/RootNavigator";
 

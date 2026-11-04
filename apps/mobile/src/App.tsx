@@ -18,7 +18,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "@/hooks/useAuth";
 import { RootNavigator } from "@/navigation/RootNavigator";
-import { ThemeProvider, VideoVolumeProvider, OfflineBanner } from "@apice/mobile";
+import { ThemeProvider } from "@/ui/alf";
+import { VideoVolumeProvider } from "@/components/video/VideoVolumeContext";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 import { Platform, View, ActivityIndicator } from "react-native";
 import { initSentry } from "@/observability/sentry";

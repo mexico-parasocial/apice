@@ -15,6 +15,8 @@ export interface PlaybackUrlResponse {
   expiresAt: string | null;
   durationSeconds: number | null;
   resumeSeconds: number;
+  /** Who the server issued this playback URL to. */
+  identity?: { userId: string; blueskyDid: string };
 }
 
 export interface ReportProgressInput {

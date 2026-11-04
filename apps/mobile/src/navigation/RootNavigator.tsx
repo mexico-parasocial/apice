@@ -2,7 +2,8 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { useBreakpoint, useTheme } from "@apice/mobile";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { useTheme } from "@/ui/alf";
 
 import { HomeScreen } from "@/screens/HomeScreen";
 import { CoursesScreen } from "@/screens/CoursesScreen";

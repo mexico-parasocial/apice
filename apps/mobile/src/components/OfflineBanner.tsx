@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Animated } from "react-native";
 import { useNetInfo } from "../hooks/useNetInfo";
-import { StatusBanner } from "./m8/StatusBanner";
+import { StatusBanner } from "../ui/m8/StatusBanner";
 
 /**
  * Animated banner that slides in from the top when the device goes offline.

@@ -9,13 +9,9 @@ import { StatusBar } from "expo-status-bar";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AlfText,
-  atoms as a,
-  ErrorState,
-  LoadingState,
-  useTheme,
-} from "@apice/mobile";
+import { Text as AlfText } from "@/ui/alf/typography";
+import { atoms as a, useTheme } from "@/ui/alf";
+import { ErrorState, LoadingState } from "@/components/states";
 import { useCourses, useEnroll } from "@/api/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { RootStackParamList } from "@/navigation/RootNavigator";

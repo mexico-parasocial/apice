@@ -1,8 +1,8 @@
 import React from "react";
 import { View, ActivityIndicator, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme, atoms as a } from "../alf";
-import { Text as AlfText } from "../alf/typography";
+import { useTheme, atoms as a } from "../ui/alf";
+import { Text as AlfText } from "../ui/alf/typography";
 
 /**
  * Shared loading / error / empty states (alf-styled) — one consistent UX

@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { baseTheme } from "@apice/mobile";
+import { baseTheme } from "@/ui/theme";
 
 export interface WelcomeLoginProps {
   /** Email + password — the account path, works without any external service. */

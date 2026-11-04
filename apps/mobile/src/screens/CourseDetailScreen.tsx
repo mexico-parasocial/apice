@@ -7,20 +7,14 @@ import {
   useNavigation,
 } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import {
-  AlfText,
-  atoms as a,
-  ContentContainer,
-  LessonRoad,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  makeCoursesHooks,
-  makeCourseProgressHooks,
-  makeEnrollmentHooks,
-  useTheme,
-  type LessonNode,
-} from "@apice/mobile";
+import { Text as AlfText } from "@/ui/alf/typography";
+import { atoms as a, useTheme } from "@/ui/alf";
+import { ContentContainer } from "@/components/ContentContainer";
+import LessonRoad from "@/components/LessonRoad";
+import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { makeCoursesHooks } from "@/hooks/useCourses";
+import { makeCourseProgressHooks, type LessonNode } from "@/hooks/useCourseProgress";
+import { makeEnrollmentHooks } from "@/hooks/useEnrollment";
 
 import { useCourseContent, useCourseProgress, useEnrollmentStatus, useEnroll } from "@/api/hooks";
 import { useAuth } from "@/hooks/useAuth";

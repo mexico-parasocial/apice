@@ -10,14 +10,10 @@ import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
-import {
-  AlfText,
-  atoms as a,
-  useTheme,
-  type LessonNode,
-  VideoPlayer,
-  VideoPlayerSkeleton,
-} from "@apice/mobile";
+import { Text as AlfText } from "@/ui/alf/typography";
+import { atoms as a, useTheme } from "@/ui/alf";
+import type { LessonNode } from "@/hooks/useCourseProgress";
+import { VideoPlayer, VideoPlayerSkeleton } from "@/components/VideoPlayer";
 import {
   usePlaybackUrl,
   useReportVideoProgress,

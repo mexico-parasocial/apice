@@ -10,14 +10,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import {
-  AlfText,
-  atoms as a,
-  ContentContainer,
-  downloadCertificate,
-  useTheme,
-  CertificateList,
-} from "@apice/mobile";
+import { Text as AlfText } from "@/ui/alf/typography";
+import { atoms as a, useTheme } from "@/ui/alf";
+import { ContentContainer } from "@/components/ContentContainer";
+import { downloadCertificate } from "@/utils/certificateDownload";
+import { CertificateList } from "@/components/Certificates";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import {

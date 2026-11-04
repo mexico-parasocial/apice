@@ -6,18 +6,12 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import {
-  AlfText,
-  atoms as a,
-  ContentContainer,
-  ErrorState,
-  LoadingState,
-  OptativeCourseCard,
-  OptativeHomeSection,
-  makeCoursesHooks,
-  useTheme,
-  type CourseSummary,
-} from "@apice/mobile";
+import { Text as AlfText } from "@/ui/alf/typography";
+import { atoms as a, useTheme } from "@/ui/alf";
+import { ContentContainer } from "@/components/ContentContainer";
+import { ErrorState, LoadingState } from "@/components/states";
+import { OptativeCourseCard, OptativeHomeSection } from "@/components/Optatives";
+import { makeCoursesHooks, type CourseSummary } from "@/hooks/useCourses";
 import { api } from "@/api/client";
 import { useCourses } from "@/api/hooks";
 import { useAuth } from "@/hooks/useAuth";
