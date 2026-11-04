@@ -72,14 +72,17 @@ async function buildCourseData(courseId: string) {
   return courseData;
 }
 
+// Public projection: reviewer/replier identity is limited to id, name and
+// avatar. Never select email here — this feeds the unauthenticated
+// GET /get-course/:id response and its Redis cache.
 async function buildReviews(courseId: string) {
   const reviews = await prisma.review.findMany({
     where: { courseId },
     include: {
-      user: { select: { id: true, name: true, email: true, avatar: true } },
+      user: { select: { id: true, name: true, avatar: true } },
       replies: {
         include: {
-          user: { select: { id: true, name: true, email: true, avatar: true } },
+          user: { select: { id: true, name: true, avatar: true } },
         },
       },
     },
@@ -285,12 +288,7 @@ export const getSingleCourse = CatchAsyncError(
           }),
         };
 
-        await redis.set(
-          courseCacheKey(courseId),
-          JSON.stringify(publicCourse),
-          "EX",
-          COURSE_CACHE_TTL_SECONDS
-        );
+        await redis.set(courseCacheKey(courseId), JSON.stringify(publicCourse), "EX", COURSE_CACHE_TTL_SECONDS);
 
         res.status(200).json({
           success: true,

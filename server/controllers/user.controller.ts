@@ -255,8 +255,10 @@ export const updateAccessToken = CatchAsyncError(
       const refresh_token = req.headers["refresh-token"] as string;
       const message = "Could not refresh token";
 
+      // Every rejection below is a 401: by the time we get here the access
+      // token has expired, so failing to refresh means the session is over.
       if (!refresh_token) {
-        return next(new ErrorHandler(message, 400));
+        return next(new ErrorHandler(message, 401));
       }
 
       let decoded: JwtPayload;
@@ -266,18 +268,18 @@ export const updateAccessToken = CatchAsyncError(
           process.env.REFRESH_TOKEN as string
         ) as JwtPayload;
       } catch {
-        return next(new ErrorHandler(message, 400));
+        return next(new ErrorHandler(message, 401));
       }
 
       if (!decoded?.id || !decoded?.jti) {
-        return next(new ErrorHandler(message, 400));
+        return next(new ErrorHandler(message, 401));
       }
 
       const session = await redis.get(decoded.id as string);
 
       if (!session) {
         return next(
-          new ErrorHandler("Please login for access this resources!", 400)
+          new ErrorHandler("Please login for access this resources!", 401)
         );
       }
 
@@ -285,7 +287,7 @@ export const updateAccessToken = CatchAsyncError(
       const stillValid = await isRefreshTokenValid(decoded.id, decoded.jti);
       if (!stillValid) {
         return next(
-          new ErrorHandler("Session expired, please login again", 400)
+          new ErrorHandler("Session expired, please login again", 401)
         );
       }
 
@@ -311,7 +313,9 @@ export const updateAccessToken = CatchAsyncError(
 
       return next();
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      // Redis or signing blew up: our failure, not the caller's credentials.
+      // Must not be a 401, or an infra blip would log every client out.
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
@@ -335,49 +339,6 @@ export const getUserInfo = CatchAsyncError(
     } catch (error: any) {
       // Only infrastructure failures (Redis, the database) land here.
       return next(new ErrorHandler(error.message, 500));
-    }
-  }
-);
-
-const socialAuthSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
-  avatar: z.string().optional(),
-});
-
-// social auth
-export const socialAuth = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const parsed = socialAuthSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return next(
-          new ErrorHandler(
-            parsed.error.issues.map((e) => e.message).join(", "),
-            400
-          )
-        );
-      }
-
-      const { email, name, avatar } = parsed.data;
-      const user = await prisma.user.findUnique({
-        where: { email },
-      });
-      if (!user) {
-        const newUser = await prisma.user.create({
-          data: {
-            email,
-            name,
-            password: await bcrypt.hash(Math.random().toString(36), 10),
-            avatar: avatar as any,
-          },
-        });
-        await sendToken(newUser, 200, res);
-      } else {
-        await sendToken(user, 200, res);
-      }
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
     }
   }
 );
@@ -675,57 +636,6 @@ export const deleteUser = CatchAsyncError(
         return next(error);
       }
       return next(new ErrorHandler(error.message, 500));
-    }
-  }
-);
-
-const connectBlueskySchema = z.object({
-  did: z.string().min(1),
-  handle: z.string().min(1),
-});
-
-// Connect Bluesky identity to existing Ápice account
-export const connectBluesky = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const parsed = connectBlueskySchema.safeParse(req.body);
-      if (!parsed.success) {
-        return next(
-          new ErrorHandler(
-            parsed.error.issues.map((e) => e.message).join(", "),
-            400
-          )
-        );
-      }
-
-      const { did, handle } = parsed.data;
-      const userId = req.user?.id;
-
-      // Check if DID is already linked to another account
-      const existing = await prisma.user.findUnique({
-        where: { blueskyDid: did },
-      });
-      if (existing && existing.id !== userId) {
-        return next(
-          new ErrorHandler("This Bluesky account is already linked to another user", 409)
-        );
-      }
-
-      const updated = await prisma.user.update({
-        where: { id: userId! },
-        data: { blueskyDid: did, blueskyHandle: handle },
-      });
-
-      // Update Redis cache
-      await redis.set(userId!, JSON.stringify(updated), "EX", SESSION_CACHE_TTL_SECONDS);
-
-      res.status(200).json({
-        success: true,
-        message: "Bluesky account connected",
-        user: updated,
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
     }
   }
 );

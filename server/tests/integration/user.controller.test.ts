@@ -44,6 +44,7 @@ import { ErrorMiddleware } from "../../middleware/error";
 import { prisma } from "../../utils/db";
 import { redis } from "../../utils/redis";
 import { revokeAllRefreshTokens } from "../../utils/jwt";
+import { courseCacheKey } from "../../utils/cache";
 
 const app = express();
 app.use(express.json());
@@ -182,7 +183,10 @@ describe("DELETE /api/v1/delete-user/:id", () => {
     expect(mocked(prisma.review.aggregate).mock.invocationCallOrder[0]).toBeGreaterThan(
       mocked(prisma.user.delete).mock.invocationCallOrder[0]
     );
-    expect(redis.del).toHaveBeenCalledWith("course:course-a", "course:course-b");
+    expect(redis.del).toHaveBeenCalledWith(
+      courseCacheKey("course-a"),
+      courseCacheKey("course-b")
+    );
   });
 
   it("maps a foreign key failure (P2003) to a clean 409", async () => {

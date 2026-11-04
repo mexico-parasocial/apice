@@ -5,7 +5,6 @@ import { store } from "../redux/features/store";
 import { useLoadUserQuery } from "@/redux/features/api/apiSlice";
 import Loader from "./components/Loader/Loader";
 import socketIO from "socket.io-client";
-import { SessionProvider } from "next-auth/react";
 import { redirect } from "next/navigation";
 const ENDPOINT = process.env.NEXT_PUBLIC_SOCKET_SERVER_URI || "";
 const socketId = socketIO(ENDPOINT, { transports: ["websocket"] });
@@ -36,9 +35,7 @@ export const Custom: FC<{ children: React.ReactNode }> = ({ children }) => {
       {isLoading ? (
         <Loader />
       ) : (
-        <div>
-          <SessionProvider>{children}</SessionProvider>
-        </div>
+        <div>{children}</div>
       )}
     </div>
   );

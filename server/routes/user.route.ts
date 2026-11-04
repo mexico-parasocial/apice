@@ -1,14 +1,12 @@
 import express from "express";
 import {
   activateUser,
-  connectBluesky,
   deleteUser,
   getAllUsers,
   getUserInfo,
   loginUser,
   logoutUser,
   registrationUser,
-  socialAuth,
   updatePassword,
   updateProfilePicture,
   updateUserInfo,
@@ -27,15 +25,11 @@ userRouter.get("/logout",isAutheticated, logoutUser);
 
 userRouter.get("/me", isAutheticated, getUserInfo);
 
-userRouter.post("/social-auth", socialAuth);
-
 userRouter.put("/update-user-info",isAutheticated, updateUserInfo);
 
 userRouter.put("/update-user-password", isAutheticated, updatePassword);
 
 userRouter.put("/update-user-avatar", isAutheticated, updateProfilePicture);
-
-userRouter.post("/connect-bluesky", isAutheticated, connectBluesky);
 
 userRouter.get(
   "/get-users",

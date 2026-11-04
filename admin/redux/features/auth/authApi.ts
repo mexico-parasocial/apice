@@ -69,35 +69,6 @@ export const authApi = apiSlice.injectEndpoints({
         }
       },
     }),
-    socialAuth: builder.mutation({
-      query: ({ email, name, avatar }) => ({
-        url: "social-auth",
-        method: "POST",
-        body: {
-          email,
-          name,
-          avatar,
-        },
-        credentials: "include" as const,
-      }),
-      async onQueryStarted(arg, { queryFulfilled, dispatch }) {
-        try {
-          const result = await queryFulfilled;
-          Cookies.set("accessToken", result.data.accessToken);
-          Cookies.set("refreshToken", result.data.refreshToken);
-
-          dispatch(
-            userLoggedIn({
-              accessToken: result.data.accessToken,
-              user: result.data.user,
-              refreshToken: result.data.refreshToken,
-            })
-          );
-        } catch (error: any) {
-          console.log(error);
-        }
-      },
-    }),
     logOut: builder.query({
       query: () => ({
         url: "logout",
@@ -119,6 +90,5 @@ export const {
   useRegisterMutation,
   useActivationMutation,
   useLoginMutation,
-  useSocialAuthMutation,
   useLogOutQuery,
 } = authApi;
