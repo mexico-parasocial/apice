@@ -21,10 +21,10 @@ pnpm install
 make run-dev-env            # or: pnpm dev:env
 
 # 3. Copy env files and adjust if needed
-cp server/.env.example server/.env
+cp apps/api/.env.example apps/api/.env
 
 # 4. Run the API (http://localhost:8000)
-pnpm dev:server
+pnpm dev:api
 
 # 5. Run the admin panel / mobile web
 pnpm dev:admin
@@ -40,11 +40,11 @@ pnpm android         # Android emulator
 After `pnpm install`, CocoaPods must be run once before the first native build:
 
 ```bash
-cd packages/mobile-app/ios && pod install && cd ../..
+cd apps/mobile/ios && pod install && cd ../..
 ```
 
 Re-run this any time you add or update a native dependency. See
-`packages/mobile-app/README.md` for details on the Expo patches that make the
+`apps/mobile/README.md` for details on the Expo patches that make the
 iOS build work.
 
 `make doctor` checks the running stack (API probes, Postgres, Redis,
@@ -54,33 +54,46 @@ SeaweedFS, Streamplace) and prints pass/fail per service.
 
 | Path | What it is |
 |---|---|
-| `server/` | Express 4 + TypeScript API. Prisma/Postgres, Redis, Socket.IO, Stripe, ATProto OAuth |
-| `admin/` | Next.js admin panel (MUI) |
-| `packages/mobile-app/` | Expo (React Native) learner app |
-| `packages/mobile/` | Shared mobile library (theme, components, progress hooks) |
+| `apps/api/` | Express + TypeScript API. Prisma/Postgres, Redis, Socket.IO, ATProto OAuth |
+| `apps/admin/` | Next.js admin panel (MUI) |
+| `apps/mobile/` | Expo (React Native) learner app |
 | `packages/lexicons/` | ATProto lexicons (`app.civic.*`) |
-| `docs/` | Runbooks: deployment, video pipeline, encoding, branding |
+| `infra/` | Caddy, Streamplace image, dev/ops/video shell scripts |
+| `docs/` | `architecture/`, `runbooks/`, `research/`, `brand/` |
+
+Where new code goes:
+
+- **API:** a feature lives in one folder, `apps/api/src/modules/<feature>/`,
+  as `<feature>.routes.ts` (HTTP surface), `<feature>.controller.ts`
+  (request handling) and `<feature>.service.ts` (logic with no Express
+  types). Register the router in `src/modules/index.ts`. Cross-cutting
+  infrastructure goes in `src/platform/`, middleware in `src/http/`.
+- **Admin:** routes in `src/app/`; screens and their RTK Query slice in
+  `src/features/<area>/`; shared UI in `src/components/`. Direct API calls use
+  `src/lib/apiFetch.ts` (it sends the HttpOnly session cookie).
+- **Mobile:** screens in `src/screens/`, design system in `src/ui/`.
+- **`packages/`** is only for code that two or more apps import.
 
 ## Before you open a PR
 
 CI (`.github/workflows/ci.yml`) runs on every push and PR:
 
-1. `pnpm -r typecheck` — all five packages must typecheck cleanly.
-2. `pnpm --filter server test` — Vitest suite must pass.
-3. Server and admin must build.
+1. `pnpm typecheck` — api, admin and mobile must typecheck cleanly.
+2. `pnpm test` — API and mobile Vitest suites and lexicon validation must pass.
+3. The API and admin must build.
 
 Run these locally first; a PR that fails any gate won't be reviewed.
 
 Expectations for changes:
 
 - **Server routes**: every write endpoint validates input with a Zod schema
-  (see `course.controller.ts` for the pattern) or derives its write data
+  (see `apps/api/src/modules/courses/courses.controller.ts` for the pattern) or derives its write data
   server-side. Never pass `req.body` to Prisma unparsed.
-- **New env vars**: add them to `server/.env.example` /
-  `server/.env.production.example` and to the `KnownEnvVar` union in
-  `server/utils/env.ts` if they must be validated at boot.
+- **New env vars**: add them to `apps/api/.env.example` /
+  `apps/api/.env.production.example` and to the `KnownEnvVar` union in
+  `apps/api/src/platform/env.ts` if they must be validated at boot.
 - **Database changes**: create a Prisma migration
-  (`pnpm --filter server exec prisma migrate dev --name <change>`); never edit
+  (`pnpm --filter @apice/api exec prisma migrate dev --name <change>`); never edit
   an applied migration.
 - **Comments**: explain *why*, especially for anything touching payments,
   access control, or learner privacy. This platform stores government ID

@@ -44,7 +44,7 @@ course materials work beautifully.
 
 - [ ] Phase 2 live demo recorded (instructor publish → learner completes →
       progress visible in learner's repo on pds.ls)
-- [ ] Repo link with `docs/MOOC_ON_ATPROTO.md` rendered
+- [ ] Repo link with `docs/architecture/mooc-on-atproto.md` rendered
 - [ ] Ápice node syndication on stream.place confirmed (ping Eli/Streamplace
       with the node URL once the first VODs are published)
 - [ ] Screenshots: admin publish flow, mobile player, pds.ls proof

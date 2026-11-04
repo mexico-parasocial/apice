@@ -7,7 +7,7 @@
 ## La decisión
 
 **Todo video de lección se normaliza a 1080×1920 @ 1.5 Mbps antes de publicarse
-al nodo Streamplace**, con `scripts/prepare-lesson-video.sh`.
+al nodo Streamplace**, con `infra/scripts/video/prepare-lesson-video.sh`.
 
 ## Por qué importa antes de publicar
 
@@ -22,7 +22,7 @@ al principio cuesta un script; decidirlo después cuesta una migración.
 
 ## La evidencia
 
-Medido contra `server/fixtures/videos/TESTCLIP.MP4` (1080×1920, 30 fps, H.264 a 3.2 Mbps),
+Medido contra `apps/api/fixtures/videos/TESTCLIP.MP4` (1080×1920, 30 fps, H.264 a 3.2 Mbps),
 con VMAF contra el fuente:
 
 | Peldaño | Bitrate | Programa de 25 min | VMAF |
@@ -58,7 +58,7 @@ Es una decisión de accesibilidad tanto como de costo.
 ## Uso
 
 ```bash
-./scripts/prepare-lesson-video.sh grabacion-original.mp4
+infra/scripts/video/prepare-lesson-video.sh grabacion-original.mp4
 ```
 
 Ajustable por entorno cuando haga falta (`LESSON_VIDEO_BITRATE`,

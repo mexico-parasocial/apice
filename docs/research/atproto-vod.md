@@ -54,7 +54,7 @@ ATProto is good for **identity, social graph, discovery, and signed references**
 
 Implemented in `Ápice/lexicons/` and exported as a TypeScript package from `Ápice/packages/lexicons/`.
 
-> **See [`MOOC_ON_ATPROTO.md`](./MOOC_ON_ATPROTO.md) for the current standard document** — record invariants, publishing/credential flows, and versioning. This research note is historical context.
+> **See [`docs/architecture/mooc-on-atproto.md`](../architecture/mooc-on-atproto.md) for the current standard document** — record invariants, publishing/credential flows, and versioning. This research note is historical context.
 
 | Lexicon | Record | Purpose |
 |---|---|---|
@@ -149,19 +149,19 @@ We probed Streamplace's VOD playback chain end-to-end.
 
 ### Backend changes
 
-- `server/prisma/schema.prisma` — added `VideoView` model.
-- `server/controllers/video.controller.ts` — `getLessonPlayback` now:
+- `apps/api/prisma/schema.prisma` — added `VideoView` model.
+- `apps/api/src/modules/video/video.controller.ts` — `getLessonPlayback` now:
   - Requires `req.user.blueskyDid`.
   - Skips enrollment checks.
   - Logs the view to `VideoView`.
   - Returns the resolved playback URL plus the verified identity.
-- `server/@types/custom.d.ts` — `User` type extended with `blueskyDid` / `blueskyHandle`.
-- `server/services/videoDelivery.service.ts` — default Streamplace endpoint switched from outdated `vod-beta` to `stream.place`.
+- `apps/api/src/types/express.d.ts` — `User` type extended with `blueskyDid` / `blueskyHandle`.
+- `apps/api/src/modules/video/videoDelivery.service.ts` — default Streamplace endpoint switched from outdated `vod-beta` to `stream.place`.
 
 ### Mobile changes
 
-- `packages/mobile/src/components/VideoPlayer.tsx` — `@bsky.app/video` wrapper with HLS detection.
-- `packages/mobile-app/src/screens/LessonPlayerScreen.tsx` — renders the player, shows an explicit error when Bluesky identity is missing, and surfaces the verified identity pill.
+- `apps/mobile/src/components/VideoPlayer.tsx` — `@bsky.app/video` wrapper with HLS detection.
+- `apps/mobile/src/screens/LessonPlayerScreen.tsx` — renders the player, shows an explicit error when Bluesky identity is missing, and surfaces the verified identity pill.
 
 ### Pending
 
@@ -186,7 +186,7 @@ pending upstreaming. Nothing in our chain speaks MoQ — `@bsky.app/video`
 (HLS) on native, the browser player on web, Caddy/cloudflared in front.
 Revisit when (a) Streamplace nodes expose MoQ playback as an option, and
 (b) a player we already ship gains MoQ support. Until then: HLS forever,
-and keep the bitrate ladder (VIDEO_ENCODING.md) as the real lever.
+and keep the bitrate ladder ([video-encoding.md](video-encoding.md)) as the real lever.
 
 ## Sources
 

@@ -58,6 +58,8 @@ const RESUME_THRESHOLD_SECONDS = 30;
  *     a stable, verifiable identity for every view and keeps casual bots from
  *     burning bandwidth.
  *   - The lesson must exist and have a configured video reference.
+ *   - The caller must be enrolled in the course, unless the lesson is a
+ *     preview or the caller is staff.
  *
  * Every successful request is logged to VideoView (user, lesson, provider,
  * time) for course analytics. No IP or user agent is stored.
@@ -103,6 +105,20 @@ export const getLessonPlayback = CatchAsyncError(
     const videoRef = lesson.videoUrl;
     if (!videoRef) {
       return next(new ErrorHandler("Lesson has no video", 404));
+    }
+
+    // Enrollment gate: preview lessons are open to any signed-in learner,
+    // staff can watch anything, everyone else must be enrolled.
+    if (!lesson.isPreview && req.user?.role !== "admin") {
+      const enrollment = await prisma.enrollment.findUnique({
+        where: {
+          userId_courseId: { userId, courseId: lesson.section.courseId },
+        },
+        select: { id: true },
+      });
+      if (!enrollment) {
+        return next(new ErrorHandler("You are not enrolled in this course", 403));
+      }
     }
 
     // Lightweight cooldown: don't create a new VideoView row if the same user

@@ -1,6 +1,6 @@
 # Ápice Branding
 
-Ápice is the mobile learning platform for courses on politics and quality of relationships. The shared mobile package lives in `Ápice/packages/mobile` and is consumed by `apice-mobile`.
+Ápice is the mobile learning platform for courses on politics and quality of relationships. The shared mobile package lives in `apps/mobile` and .
 
 ## Name
 
@@ -44,7 +44,7 @@ The app uses a light, white-forward palette with purple and gold accents.
 ## Shared package
 
 - Package name: `@apice/mobile`
-- Source: `Ápice/packages/mobile/src`
+- Source: `apps/mobile/src`
 - Theme entry: `@apice/mobile/theme`
 
 ## Next steps

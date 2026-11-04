@@ -1,7 +1,7 @@
 # @apice/lexicons
 
 The `app.civic.*` lexicons — the open standard for MOOCs on ATProto. See
-[`docs/MOOC_ON_ATPROTO.md`](../../docs/MOOC_ON_ATPROTO.md) for the full
+[`docs/architecture/mooc-on-atproto.md`](../../docs/architecture/mooc-on-atproto.md) for the full
 standard document.
 
 ## Records

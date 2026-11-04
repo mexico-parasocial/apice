@@ -49,7 +49,7 @@ From the repo root:
 
 ```bash
 pnpm install
-cp packages/mobile-app/.env.example packages/mobile-app/.env
+cp apps/mobile/.env.example apps/mobile/.env
 ```
 
 Edit `.env` if your server is not on `http://127.0.0.1:8000`.
@@ -61,7 +61,7 @@ CocoaPods must be re-installed after every `pnpm install` (Expo's
 again any time you add or update a native dependency:
 
 ```bash
-cd packages/mobile-app/ios && pod install && cd ../..
+cd apps/mobile/ios && pod install && cd ../..
 ```
 
 If you skip this step, `expo run:ios` or `xcodebuild` will fail with missing
@@ -75,10 +75,10 @@ pnpm ios            # iOS simulator (runs pod install automatically)
 pnpm android        # Android emulator
 ```
 
-Alternatively, from the mobile-app directory:
+Alternatively, from the app directory:
 
 ```bash
-cd packages/mobile-app
+cd apps/mobile
 pnpm expo start     # then press i (iOS) or a (Android)
 ```
 

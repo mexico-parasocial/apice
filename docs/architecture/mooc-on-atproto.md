@@ -100,8 +100,8 @@ model can be layered later without breaking v1 records.
 4. `createRecord app.civic.course` with section/lesson strongRefs.
 5. `putRecord` each lesson with the final courseRef.
 
-Reference: `admin/app/utils/civicPublish.ts` (browser, instructor DID) and
-`server/services/atproto.service.ts` (service-account fallback).
+Reference: `apps/admin/src/lib/civicPublish.ts` (browser, instructor DID) and
+`apps/api/src/modules/atproto/atproto.service.ts` (service-account fallback).
 
 ### 4.2 Learner: earn a credential
 
@@ -111,13 +111,13 @@ Reference: `admin/app/utils/civicPublish.ts` (browser, instructor DID) and
    **into the learner's repo** with a deterministic rkey (idempotent).
 4. Any other app can now read and trust that credential.
 
-Reference: `server/services/credentials.service.ts`.
+Reference: `apps/api/src/modules/credentials/credentials.service.ts`.
 
 ### 4.3 App: consume the network
 
 Subscribe to Jetstream for the four collections, validate with
 `@atproto/lexicon` + `@apice/lexicons`, index. Reference:
-`server/workers/jetstreamIndexer.ts` (+ `GET /api/v1/network/courses`).
+`apps/api/src/workers/jetstreamIndexer.ts` (+ `GET /api/v1/network/courses`).
 
 ## 5. Invariants & rules for implementers
 
@@ -150,9 +150,9 @@ matures. Implementers should request the narrowest scope their PDS accepts.
 | Piece | Where |
 |---|---|
 | Lexicon schemas | `/lexicons/*.json`, `@apice/lexicons` |
-| Instructor publishing (own DID) | `admin/app/utils/civicPublish.ts` |
-| Learner credential writer | `server/services/credentials.service.ts` |
-| ATProto OAuth (learners) | `server/services/atprotoOAuth.service.ts` |
-| Network indexer | `server/workers/jetstreamIndexer.ts` |
-| Network read API | `server/controllers/network.controller.ts` |
-| Video delivery (Streamplace) | `server/services/videoDelivery.service.ts` |
+| Instructor publishing (own DID) | `apps/admin/src/lib/civicPublish.ts` |
+| Learner credential writer | `apps/api/src/modules/credentials/credentials.service.ts` |
+| ATProto OAuth (learners) | `apps/api/src/modules/auth/atprotoOAuth.service.ts` |
+| Network indexer | `apps/api/src/workers/jetstreamIndexer.ts` |
+| Network read API | `apps/api/src/modules/network/network.controller.ts` |
+| Video delivery (Streamplace) | `apps/api/src/modules/video/videoDelivery.service.ts` |

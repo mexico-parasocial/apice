@@ -70,7 +70,7 @@ echo
 
 # 3. Documentation consistency
 echo "3. Documentation consistency"
-ENCODING_DOC="$ROOT_DIR/docs/VIDEO_ENCODING.md"
+ENCODING_DOC="$ROOT_DIR/docs/research/video-encoding.md"
 if [ -f "$ENCODING_DOC" ]; then
   for entry in "1080x1920:1.5 Mbps" "720x1280:800 kbps" "540x960:500 kbps" "360x640:280 kbps"; do
     res="${entry%%:*}"
@@ -84,7 +84,7 @@ if [ -f "$ENCODING_DOC" ]; then
     fi
   done
 else
-  echo "  ⚠ VIDEO_ENCODING.md not found"
+  echo "  ⚠ docs/research/video-encoding.md not found"
 fi
 echo
 

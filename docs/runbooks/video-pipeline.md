@@ -68,12 +68,12 @@ Choose **one** strategy on the Streamplace node:
 
 Use the smoke-test script from the server directory. You need a real `place.stream.video` AT URI published on your node.
 
-A sample test clip is available locally at `server/fixtures/videos/TESTCLIP.MP4` (H.264, 1080×1920, 22.8 s).
+A sample test clip is available locally at `apps/api/fixtures/videos/TESTCLIP.MP4` (H.264, 1080×1920, 22.8 s).
 
 ```bash
-cd server
+cd apps/api
 npx ts-node-dev --transpile-only --no-notify --exit-child \
-  scripts/verify-streamplace-playback.ts \
+  scripts/video/verify-streamplace-playback.ts \
   "at://did:web:vod.apice.example.com/place.stream.video/<record-key>"
 ```
 
@@ -98,11 +98,11 @@ export ATPROTO_APP_PASSWORD="xxxx-xxxx-xxxx-xxxx"
 # optional: STREAMPLACE_PUBLISH_URL (defaults to STREAMPLACE_VOD_BASE_URL, else stream.place)
 
 # normalize the source first (bitrate ladder tuned for prepaid data)
-./scripts/prepare-lesson-video.sh raw-capture.mp4
+infra/scripts/video/prepare-lesson-video.sh raw-capture.mp4
 
 # publish → verify playback → attach to the lesson
-cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \
-  scripts/publish-lesson-video.ts ../normalized.mp4 \
+cd apps/api && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \
+  scripts/video/publish-lesson-video.ts ../normalized.mp4 \
   --title "Lección 1 — Introducción" \
   --lesson <lessonId>
 ```
@@ -124,7 +124,7 @@ can retry attaching later.
 
 1. Open the Streamplace web dashboard at `https://vod.apice.example.com`.
 2. Sign in with an allowed instructor Bluesky account.
-3. Upload a video (or use the local test clip `server/fixtures/videos/TESTCLIP.MP4`) and wait for transcoding to complete.
+3. Upload a video (or use the local test clip `apps/api/fixtures/videos/TESTCLIP.MP4`) and wait for transcoding to complete.
 4. Copy the resulting `place.stream.video` AT URI.
 5. In the Ápice admin, open the course editor, find the lesson, paste the AT URI, and click **“Vincular video ahora”**.
 6. Confirm the server responds with `success: true`.
@@ -171,7 +171,7 @@ Expected response:
 | Segment fetch fails | SeaweedFS S3 misconfiguration or CORS. | Check `SP_S3_*` env vars and that segments are in the bucket. |
 | Mobile gets 400/401 | Missing `access-token` header or token expired. | Verify mobile login stores token and `api` interceptor adds it. |
 | Mobile gets 403 “Bluesky identity required” | Learner has no `blueskyDid` in the `User` table. | Link identity via iM8/OAuth flow first. |
-| `Lesson not found` from `POST /videoRef` | The lesson does not exist in relational tables yet. | Run JSON → relational migration (`scripts/migrate-json-to-relational.ts`) or create the lesson through the new relational flow. |
+| `Lesson not found` from `POST /videoRef` | The lesson id doesn't exist (deleted, or from another database). | Fetch current lesson ids with `GET /api/v1/get-admin-course-content/:courseId` and retry. |
 
 ---
 

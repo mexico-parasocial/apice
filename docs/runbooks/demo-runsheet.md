@@ -28,7 +28,7 @@ cd /Users/mlv/Desktop/Ápice && make run-dev-env
 Luego, en tres terminales:
 
 ```bash
-pnpm dev:server
+pnpm dev:api
 ```
 
 ```bash
@@ -42,7 +42,7 @@ pnpm web -- --port 8082
 Y deja el estado del alumno en cero:
 
 ```bash
-cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/demo-reset.ts
+cd apps/api && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/seed/demo-reset.ts
 ```
 
 ### Puertos
@@ -162,7 +162,7 @@ panel en `localhost:3000`.
 
 ### Hoy (simulado, local)
 
-`server/.env` lleva `ALLOW_DIRECT_VIDEO_URLS=true`. Eso habilita dos cosas
+`apps/api/.env` lleva `ALLOW_DIRECT_VIDEO_URLS=true`. Eso habilita dos cosas
 **solo para demos locales**:
 
 - el servidor sirve `fixtures/videos/` en `/demo-media` (con byte-ranges, así
@@ -175,17 +175,17 @@ esto **no puede colarse a producción por accidente**.
 Para volver a conectarlo si algo se desconfigura:
 
 ```bash
-cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/attach-lesson-video.ts "http://127.0.0.1:8000/demo-media/TESTCLIP.MP4" --first-only
+cd apps/api && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/video/attach-lesson-video.ts "http://127.0.0.1:8000/demo-media/TESTCLIP.MP4" --first-only
 ```
 
 Para publicar un video REAL al nodo (sin navegador) y dejar el fixture:
-ver `docs/VIDEO_PIPELINE_RUNBOOK.md` §"Headless path" y
-`docs/PILOT_CHECKLIST.md`. Resumen:
+ver `docs/runbooks/video-pipeline.md` §"Headless path" y
+`docs/runbooks/pilot-checklist.md`. Resumen:
 
 ```bash
 export ATPROTO_HANDLE="…" ATPROTO_APP_PASSWORD="…"
-cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \
-  scripts/publish-lesson-video.ts ../lesson.mp4 --title "…" --lesson <lessonId>
+cd apps/api && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \
+  scripts/video/publish-lesson-video.ts ../lesson.mp4 --title "…" --lesson <lessonId>
 ```
 
 > La reproducción exige identidad Bluesky verificada. `seed-demo-users.ts` le
@@ -197,7 +197,7 @@ cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \
 Publica el video al nodo, toma el AT URI (`at://did:…/place.stream.video/…`) y:
 
 ```bash
-cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/attach-lesson-video.ts "at://did:…/place.stream.video/…" --first-only
+cd apps/api && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/video/attach-lesson-video.ts "at://did:…/place.stream.video/…" --first-only
 ```
 
 El script **verifica que el video realmente se resuelve** contra el mismo
@@ -205,12 +205,12 @@ proveedor que usa el servidor antes de escribir en la base — si el URI está m
 falla ahí y no en el escenario. `--first-only` lo pone en la primera lección de
 cada programa; sin la bandera, en todas las lecciones sin video.
 
-Al pasar a Streamplace, quita `ALLOW_DIRECT_VIDEO_URLS` de `server/.env`.
+Al pasar a Streamplace, quita `ALLOW_DIRECT_VIDEO_URLS` de `apps/api/.env`.
 
 Comprobación independiente:
 
 ```bash
-cd server && pnpm smoke:video "at://did:…/place.stream.video/…"
+cd apps/api && pnpm smoke:video "at://did:…/place.stream.video/…"
 ```
 
 ---
@@ -219,8 +219,8 @@ cd server && pnpm smoke:video "at://did:…/place.stream.video/…"
 
 | Síntoma | Arreglo |
 |---|---|
-| La app queda en blanco (Network Error) | Revisa `packages/mobile-app/.env`: en dev debe ser `EXPO_PUBLIC_API_URL=http://127.0.0.1:8000`. Tras cambiarlo, reinicia el bundler con `pnpm web -- --port 8082 --clear`. Si apunta al stack de prod (8010), `ALLOWED_ORIGINS` de `server/.env.production` (y del checkout de deploy `/Users/mlv/apice-prod`) debe incluir `http://localhost:8082` — y recrea el contenedor (`docker compose … up -d --no-build --no-deps --force-recreate server`), `docker restart` no relee el env. |
-| La app no carga cursos | Revisa que el server siga arriba: `curl localhost:8000/api/v1/get-courses`. Si cambió el puerto del bundler, añade el origen a `ALLOWED_ORIGINS` en `server/.env` y **reinicia el server** (no recarga solo). |
+| La app queda en blanco (Network Error) | Revisa `apps/mobile/.env`: en dev debe ser `EXPO_PUBLIC_API_URL=http://127.0.0.1:8000`. Tras cambiarlo, reinicia el bundler con `pnpm web -- --port 8082 --clear`. Si apunta al stack de prod (8010), `ALLOWED_ORIGINS` de `apps/api/.env.production` (y del checkout de deploy `/Users/mlv/apice-prod`) debe incluir `http://localhost:8082` — y recrea el contenedor (`docker compose … up -d --no-build --no-deps --force-recreate server`), `docker restart` no relee el env. |
+| La app no carga cursos | Revisa que el server siga arriba: `curl localhost:8000/api/v1/get-courses`. Si cambió el puerto del bundler, añade el origen a `ALLOWED_ORIGINS` en `apps/api/.env` y **reinicia el server** (no recarga solo). |
 | Pantalla en blanco en un curso | Recarga. Si persiste, salta a otro curso — el catálogo y el admin no dependen de esa pantalla. |
 | El progreso no sube | Vuelve a entrar al curso (la pantalla refresca al recuperar el foco). |
 | Postgres no conecta | El puerto es **5434**. Si algo más lo tomó, `docker compose up -d postgres` y revisa `docker ps`. |
@@ -231,15 +231,15 @@ cd server && pnpm smoke:video "at://did:…/place.stream.video/…"
 ## 7. Semillas disponibles
 
 ```bash
-cd server
+cd apps/api
 # 5 programas con módulos y lecciones
-pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/seed-courses.ts
+pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/seed/seed-courses.ts
 # cuentas demo@ y admin@ (pre-verificadas)
-pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/seed-demo-users.ts
+pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/seed/seed-demo-users.ts
 # 62 alumnos + inscripciones + órdenes repartidos en 12 meses (para la analítica)
-pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/seed-demo-analytics.ts
+pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/seed/seed-demo-analytics.ts
 # deja a demo@apice.local en cero, inscrita en todo
-pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/demo-reset.ts
+pnpm exec ts-node-dev --transpile-only --no-notify --exit-child scripts/seed/demo-reset.ts
 ```
 
 La cohorte de analítica usa el dominio `@demo.apice.local` y se borra con:
@@ -252,7 +252,7 @@ DELETE FROM "User" WHERE email LIKE '%@demo.apice.local';
 
 ## 8. Nota para iOS
 
-El reproductor web (`packages/mobile/src/components/VideoPlayer.web.tsx`) es
+El reproductor web (`apps/mobile/src/components/VideoPlayer.web.tsx`) es
 nuevo: `@bsky.app/video` lanza *"Not implemented on web"*, así que la web usa un
 `<video>` HTML5 con el mismo contrato de callbacks. **La app nativa sigue usando
 BlueskyVideoView sin cambios** — este archivo solo afecta al build web.

@@ -10,8 +10,8 @@ becomes October's backlog.
 - [ ] **One real video published to the node** (the last "mock" standing):
       ```bash
       export ATPROTO_HANDLE="…" ATPROTO_APP_PASSWORD="…"
-      cd server && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \
-        scripts/publish-lesson-video.ts ../lesson.mp4 --title "…" --lesson <first-lesson-id>
+      cd apps/api && pnpm exec ts-node-dev --transpile-only --no-notify --exit-child \
+        scripts/video/publish-lesson-video.ts ../lesson.mp4 --title "…" --lesson <first-lesson-id>
       ```
       Instructor DID must be in `STREAMPLACE_ALLOWED_STREAMS`.
       Until this box is ticked, lessons play the local fixture (dev) or nothing (prod).
@@ -19,8 +19,8 @@ becomes October's backlog.
 - [ ] **Monitoring is watching**: uptime-kuma running (`--profile monitoring`),
       one monitor on `https://api…/ready` and one on `/metrics`; alerts land
       somewhere a human reads (`ALERT_WEBHOOK`).
-- [ ] **Backups + restore proven**: `scripts/restore-drill-check.sh` has run
-      green at least once (see `docs/BACKUP_RESTORE_DRILL.md`).
+- [ ] **Backups + restore proven**: `infra/scripts/ops/restore-drill-check.sh` has run
+      green at least once (see `docs/runbooks/backup-restore-drill.md`).
 - [ ] **Seed reality check**: courses on the device are the ones the org
       actually wants taught first (`seed-courses.ts` content reviewed and
       edited by the org, not the demo placeholders if those differ).

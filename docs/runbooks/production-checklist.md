@@ -14,12 +14,12 @@ producto**, ver la conversación de planificación (sprint de calidad).
    falló. El servicio `server` ya tiene `healthcheck` contra `/ready` en
    `docker-compose.prod.yml`, y Caddy espera `service_healthy` antes de
    enrutar. Probado tumbando Postgres a propósito.
-2. ✅ **Logging estructurado (Pino)** — configurado en `server/app.ts` con
+2. ✅ **Logging estructurado (Pino)** — configurado en `apps/api/src/app.ts` con
    pino-http; health/metrics probes silenciados; errores en `error` level,
    4xx en `warn`. Reemplaza `console.log` en controllers (2026-09-06).
 3. **Timeouts/retry** en llamadas salientes: Stripe, PDS, iM8 (Streamplace XRPC
    ya tiene timeout de 15s).
-4. ✅ **Validación de entorno al arrancar (2026-08-19)** — `server/utils/env.ts`
+4. ✅ **Validación de entorno al arrancar (2026-08-19)** — `apps/api/src/platform/env.ts`
    valida `process.env` antes de que nada escuche en un puerto y **aborta el
    arranque** con la lista de lo que falta. En producción además rechaza
    secretos que sigan en `change-me` y `ALLOW_DIRECT_VIDEO_URLS=true`.
@@ -41,7 +41,7 @@ producto**, ver la conversación de planificación (sprint de calidad).
 8. **Prebuild + build de Android** — hasta ahora solo iOS está verificado;
    `@bsky.app/video`, expo-keep-awake y demás módulos deben compilar en
    Android (elegible a shims como los de iOS).
-9. ✅ **Runbook de despliegue** (docs/) — `DEPLOYMENT_RUNBOOK.md` cubre DNS,
+9. ✅ **Runbook de despliegue** (docs/) — `docs/runbooks/deployment.md` cubre DNS,
    tunnel, compose, verificación. Actualizado con Uptime Kuma y backup service.
 
 ## B. Depende de cuentas/credenciales (humano)
@@ -62,10 +62,10 @@ producto**, ver la conversación de planificación (sprint de calidad).
 2. **Publicar 3–5 cursos reales** desde admin con instructor DID (también
    alimenta el indexer y la demo pública).
 3. **Backup drill**: restaurar Postgres desde `apice-backups` (SeaweedFS) una
-   vez antes de confiar en él (ver `docs/BACKUP_RESTORE_DRILL.md`).
+   vez antes de confiar en él (ver `docs/runbooks/backup-restore-drill.md`).
 4. **Load test** del path de playback con el CDN activo.
 5. **Post de lanzamiento** — borrador listo en
-   `docs/COMMUNITY_ANNOUNCEMENT.md`.
+   `docs/brand/community-announcement.md`.
 6. **Retro + diseño del modelo de ingresos** (input del próximo trimestre).
 
 ## D. Seguridad verificada (hecho 2026-09-06)
@@ -79,4 +79,4 @@ producto**, ver la conversación de planificación (sprint de calidad).
 - ✅ LessonRef migrado de JSON a tabla relacional (foreign keys, unique
   constraint, cascade delete).
 - ✅ Uptime Kuma disponible (`make monitoring-up`).
-- ✅ Backup restore drill documentado (`docs/BACKUP_RESTORE_DRILL.md`).
+- ✅ Backup restore drill documentado (`docs/runbooks/backup-restore-drill.md`).

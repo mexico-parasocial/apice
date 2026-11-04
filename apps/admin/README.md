@@ -1,32 +1,33 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Ápice admin
 
-## Getting Started
-
-From the repo root, run the development server:
+Next.js panel for instructors and staff: course authoring (with Streamplace
+video upload and ATProto publishing), quizzes, INE review, users, analytics,
+and the public site's FAQ/categories/banner.
 
 ```bash
-pnpm dev:admin
-# or, from this directory
-pnpm dev
+pnpm dev:admin        # from the repo root → http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set `NEXT_PUBLIC_SERVER_URI` (e.g. `http://localhost:8000/api/v1`) in
+`apps/admin/.env` — see `.env.example`. `NEXT_PUBLIC_*` values are inlined at
+build time, so the Docker image takes them as build args.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Layout
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+| Path | What goes there |
+|---|---|
+| `src/app/` | Routes only: pages, layouts, the OAuth client-metadata route |
+| `src/features/<area>/` | Screens for one area plus its RTK Query slice (`courses`, `cms`, `users`, `ine`, `orders`, `analytics`, `auth`, `notifications`, `dashboard`) |
+| `src/components/` | Shared UI (Heading, Loader, theme, ratings, player) |
+| `src/lib/` | Non-React helpers: `apiFetch`, Streamplace upload/OAuth, ATProto publishing |
+| `src/store/` | Redux store and the base API slice |
 
-## Learn More
+`@/…` imports resolve to `src/`.
 
-To learn more about Next.js, take a look at the following resources:
+## Sessions
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+The API sets the session as HttpOnly cookies; page scripts never see a token.
+Every API request must send credentials and the `x-auth-mode: cookie` header
+— RTK Query does this in `src/store/apiSlice.ts`, direct calls go through
+`src/lib/apiFetch.ts`. Admin and API must be on the same site
+(`admin.example.com` + `api.example.com`).

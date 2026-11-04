@@ -2,7 +2,7 @@
 
 **A free, open learning platform for civic education — built on ATProto (Bluesky) infrastructure.**
 
-Ápice is a MOOC platform designed for community organisations: courses, lessons, quizzes, progress tracking, certificates, and streaming video. What makes it different from every other LMS is where the records live — **learner progress is published to the learners' own ATProto repositories**, not held in our database. A political community shouldn't have to be trusted with a record of who studied what; the architecture makes that trust unnecessary.
+Ápice is a MOOC platform designed for community organisations: courses, lessons, quizzes, progress tracking, certificates, and streaming video. What makes it different from other LMSs is that **a learner can carry their record with them**: with their consent, each completed lesson and course is published as a signed record in *their own* ATProto repository, so it outlives this platform.
 
 Born from a Mexican civic-education project, the first deployment serves organizers and militantes learning their rights, labour law, and how to participate. The platform itself knows nothing about any particular cause — it's a general MOOC with an ATProto soul.
 
@@ -10,34 +10,50 @@ Born from a Mexican civic-education project, the first deployment serves organiz
 
 ## Why ATProto?
 
-- **Self-attested credentials.** When a learner completes a lesson, an `app.civic.progress` record lands in *their* repo (their DID, signed by their key). Their credentials outlive this platform.
+- **Self-attested credentials — opt-in.** If the learner turns it on (Profile → *Credenciales en Bluesky*), each completed lesson and course becomes an `app.civic.progress` record in *their* repo (their DID, signed by their key). ATProto repos are **public**: those records go out on the firehose and are copied by relays, so anyone can see which courses that person completed. That is why it is off by default and explained in plain language before it is enabled. Publishing goes through a durable outbox with retries (`apps/api/src/modules/credentials`).
 - **Federated identity.** Login flows through [iM8](https://github.com/) / Bluesky OAuth — no passwords required for the federated path, one identity across services.
 - **Network courses.** A Jetstream indexer watches the ATProto firehose for `app.civic.course` records, so courses published by any compatible service appear in the catalogue.
-- **Your data is a pointer, not a silo.** The server stores enrollment and progress state for *serving* the course, but the durable proof-of-learning record belongs to the learner.
+- **Your data is a pointer, not a silo.** The server stores enrollment and progress state for *serving* the course; the portable proof-of-learning record, when the learner wants one, belongs to the learner. Video views are logged per user and lesson for course analytics, without IP addresses.
 
 ## Features
 
 - 📚 **Courses** — sections, ordered lessons, checkpoint ("boss") quizzes gating progression
-- 🎬 **Streaming video** — self-hosted [Streamplace](https://stream.place) node with HLS playback; videos are normalised server-side for low-bandwidth audiences (see `docs/VIDEO_ENCODING.md`)
+- 🎬 **Streaming video** — self-hosted [Streamplace](https://stream.place) node with HLS playback; videos are normalised server-side for low-bandwidth audiences (see `docs/research/video-encoding.md`)
 - 📝 **Quizzes** — checkpoint quizzes with pass-gating; lesson completion requires passing the checkpoint
 - 📜 **Certificates** — SVG certificates, claimable on completion, downloadable and shareable
 - 🔐 **INE verification** — optional Mexican voter-ID review flow for identity-gated programmes
-- 🔔 **Notifications** — Socket.IO realtime delivery
+- 🔔 **Notifications** — staff activity feed and learner inbox, pushed in realtime over Socket.IO
 - 📊 **Analytics** — enrollment, progress and revenue charts for organizers
 - 🛰️ **ATProto integration** — OAuth login, course/lesson publishing, per-lesson progress credentials, firehose indexing
 - 📈 **Observability** — Prometheus metrics (`/metrics`), health/readiness probes, pino structured logging, Sentry crash reporting
 
 ## Repository layout
 
-| Path | What it is |
-|---|---|
-| `server/` | Express 4 + TypeScript API — Prisma/PostgreSQL, Redis, Socket.IO, Stripe (dormant), ATProto OAuth, Jetstream indexer worker |
-| `admin/` | Next.js admin panel (MUI) — course authoring, INE review, analytics |
-| `packages/mobile-app/` | Expo (React Native) learner app — iOS, Android, and web |
-| `packages/mobile/` | Shared mobile library — theme, components, React Query hooks |
-| `packages/lexicons/` | ATProto lexicons (`app.civic.*`) |
-| `docs/` | Runbooks: deployment, video pipeline, encoding, branding, demo |
-| `scripts/` | Ops: `doctor.sh`, dev-env boot, backups, SeaweedFS setup |
+```
+apps/                 everything you deploy or run
+  api/                Express API (TypeScript, Prisma/PostgreSQL, Redis, Socket.IO)
+    src/modules/      one folder per domain: <name>.routes / .controller / .service
+    src/http/         middleware, error handling, health + metrics probes
+    src/platform/     db, redis, logger, env, mail, cache, realtime, paths
+    src/workers/      Jetstream (firehose) indexer
+    prisma/           schema + migrations
+    scripts/          seed/ (demo content), video/ (publish/attach lesson videos)
+    templates/mail/   email templates
+  admin/              Next.js panel — src/app (routes), src/features/<area>, src/components, src/lib
+  mobile/             Expo learner app — src/screens, src/ui (design system), src/hooks, …
+packages/
+  lexicons/           app.civic.* ATProto lexicons (JSON schemas + validator)
+infra/
+  caddy/              reverse proxy config
+  streamplace/        self-hosted Streamplace node image
+  scripts/            dev/ (dev env, doctor) · ops/ (backups, restore drill, storage init) · video/ (encoding)
+docs/
+  architecture/  runbooks/  research/  brand/
+docker-compose.yml        local Postgres + Redis (and optional API/indexer containers)
+docker-compose.prod.yml   the full production stack
+```
+
+Rule of thumb: `apps/` is anything deployable, `packages/` is code used by two or more apps, `infra/` is how it runs. The compose files stay at the root on purpose — Docker Compose names the project (and its data volumes) after their directory.
 
 ## Quickstart
 
@@ -51,24 +67,24 @@ pnpm install
 make run-dev-env
 
 # 3. Configure the API
-cp server/.env.example server/.env
+cp apps/api/.env.example apps/api/.env
 
 # 4. Start the API (http://localhost:8000)
-pnpm dev:server
+pnpm dev:api
 
 # 5. In other terminals:
 pnpm dev:admin   # admin panel  → http://localhost:3000
 pnpm web         # mobile app   → http://localhost:8081
 
 # 6. Seed demo content (5 civic courses)
-cd server && pnpm exec ts-node-dev --transpile-only scripts/seed-courses.ts
+pnpm seed
 ```
 
 `make doctor` checks the running stack and prints pass/fail per service — API probes, Postgres, Redis, SeaweedFS, Streamplace.
 
 ### Production
 
-`docker-compose.prod.yml` runs the full stack: API, admin, Postgres 16, Redis 7, a SeaweedFS object-storage cluster, a self-hosted Streamplace node, Caddy (direct-origin profile) or a Cloudflare Tunnel profile, and nightly backups. See `docs/DEPLOYMENT_RUNBOOK.md`.
+`docker-compose.prod.yml` runs the full stack: API, admin, Postgres 16, Redis 7, a SeaweedFS object-storage cluster, a self-hosted Streamplace node, Caddy (direct-origin profile) or a Cloudflare Tunnel profile, and nightly backups. See `docs/runbooks/deployment.md`.
 
 ```bash
 cp .env.example .env   # fill real values
@@ -88,23 +104,24 @@ Crash reporting is DSN-gated (`EXPO_PUBLIC_SENTRY_DSN` on mobile) — a build wi
 ## Testing & CI
 
 ```bash
-pnpm -r typecheck   # all five packages
-pnpm -r test        # server (Vitest) + mobile shared package (Vitest)
+pnpm typecheck   # api, admin, mobile
+pnpm test        # api + mobile (Vitest), lexicon validation
 ```
 
-CI (`.github/workflows/ci.yml`) gates every PR on typecheck → tests → server & admin builds.
+CI (`.github/workflows/ci.yml`) gates every PR on typecheck → tests → API & admin builds.
 
 ## The video pipeline
 
-Instructors upload to the self-hosted Streamplace node; Ápice resolves `at://` video references through `place.stream.playback.getVideoPlaylist` and enforces per-lesson access (authenticated + verified Bluesky DID + enrollment). Before a video reference can be attached to a lesson, the server verifies Streamplace can actually serve it — unpublished videos fail at attach time, not in front of a learner. Sources are normalised server-side (`scripts/prepare-lesson-video.sh`) because the audience is frequently on prepaid mobile data — the bitrate ladder is documented with VMAF measurements in `docs/VIDEO_ENCODING.md`.
+Instructors upload to the self-hosted Streamplace node; Ápice resolves `at://` video references through `place.stream.playback.getVideoPlaylist` and enforces per-lesson access (authenticated + verified Bluesky DID + enrollment). Before a video reference can be attached to a lesson, the server verifies Streamplace can actually serve it — unpublished videos fail at attach time, not in front of a learner. Sources are normalised server-side (`infra/scripts/video/prepare-lesson-video.sh`) because the audience is frequently on prepaid mobile data — the bitrate ladder is documented with VMAF measurements in `docs/research/video-encoding.md`.
 
 ## Documentation
 
-- `docs/DEPLOYMENT_RUNBOOK.md` — production deployment, tunnel, backups
-- `docs/VIDEO_PIPELINE_RUNBOOK.md` — publish a lesson video end-to-end
-- `docs/VIDEO_ENCODING.md` — the bitrate ladder and why
-- `docs/MOOC_ON_ATPROTO.md` — the architectural thesis
-- `docs/APICE_BRANDING.md` — visual identity
+- `docs/architecture/mooc-on-atproto.md` — the architectural thesis and the `app.civic.*` standard
+- `docs/runbooks/deployment.md` — production deployment, tunnel, backups (and upgrading to this layout)
+- `docs/runbooks/video-pipeline.md` — publish a lesson video end-to-end
+- `docs/runbooks/` — also: production and pilot checklists, backup/restore drill, demo runsheet
+- `docs/research/video-encoding.md` — the bitrate ladder and why; `docs/research/atproto-vod.md` — video on ATProto
+- `docs/brand/` — visual identity, community announcement
 
 ## Contributing & security
 
