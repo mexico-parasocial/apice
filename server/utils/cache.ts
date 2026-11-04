@@ -12,3 +12,13 @@ export const SESSION_CACHE_TTL_SECONDS = refreshTokenExpireSeconds;
 
 /** Course-detail cache — content changes rarely; 7 days. */
 export const COURSE_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+/**
+ * Redis key for the public course-detail cache.
+ *
+ * Versioned: v1 entries (keyed by the bare course id) carried reviewer and
+ * replier emails. Bumping the prefix means those stale entries are never
+ * read again and simply age out under their TTL. Bump again if the cached
+ * shape changes in a way old entries must not be served.
+ */
+export const courseCacheKey = (courseId: string) => `course:v2:${courseId}`;
