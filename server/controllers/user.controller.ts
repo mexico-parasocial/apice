@@ -333,49 +333,6 @@ export const getUserInfo = CatchAsyncError(
   }
 );
 
-const socialAuthSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
-  avatar: z.string().optional(),
-});
-
-// social auth
-export const socialAuth = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const parsed = socialAuthSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return next(
-          new ErrorHandler(
-            parsed.error.issues.map((e) => e.message).join(", "),
-            400
-          )
-        );
-      }
-
-      const { email, name, avatar } = parsed.data;
-      const user = await prisma.user.findUnique({
-        where: { email },
-      });
-      if (!user) {
-        const newUser = await prisma.user.create({
-          data: {
-            email,
-            name,
-            password: await bcrypt.hash(Math.random().toString(36), 10),
-            avatar: avatar as any,
-          },
-        });
-        await sendToken(newUser, 200, res);
-      } else {
-        await sendToken(user, 200, res);
-      }
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
-    }
-  }
-);
-
 const updateUserInfoSchema = z.object({
   name: z.string().min(1).optional(),
 });
@@ -621,57 +578,6 @@ export const deleteUser = CatchAsyncError(
       res.status(200).json({
         success: true,
         message: "User deleted successfully",
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
-    }
-  }
-);
-
-const connectBlueskySchema = z.object({
-  did: z.string().min(1),
-  handle: z.string().min(1),
-});
-
-// Connect Bluesky identity to existing Ápice account
-export const connectBluesky = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const parsed = connectBlueskySchema.safeParse(req.body);
-      if (!parsed.success) {
-        return next(
-          new ErrorHandler(
-            parsed.error.issues.map((e) => e.message).join(", "),
-            400
-          )
-        );
-      }
-
-      const { did, handle } = parsed.data;
-      const userId = req.user?.id;
-
-      // Check if DID is already linked to another account
-      const existing = await prisma.user.findUnique({
-        where: { blueskyDid: did },
-      });
-      if (existing && existing.id !== userId) {
-        return next(
-          new ErrorHandler("This Bluesky account is already linked to another user", 409)
-        );
-      }
-
-      const updated = await prisma.user.update({
-        where: { id: userId! },
-        data: { blueskyDid: did, blueskyHandle: handle },
-      });
-
-      // Update Redis cache
-      await redis.set(userId!, JSON.stringify(updated), "EX", SESSION_CACHE_TTL_SECONDS);
-
-      res.status(200).json({
-        success: true,
-        message: "Bluesky account connected",
-        user: updated,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
