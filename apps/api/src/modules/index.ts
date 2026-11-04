@@ -16,6 +16,7 @@ import ineRouter from "./ine/ine.routes";
 import notificationRouter from "./notifications/notifications.routes";
 import cmsRouter from "./cms/cms.routes";
 import analyticsRouter from "./analytics/analytics.routes";
+import pushRouter from "./push/push.routes";
 import orderRouter from "./payments/orders.routes";
 
 /**
@@ -44,6 +45,7 @@ apiRouter.use(
   notificationRouter,
   cmsRouter,
   analyticsRouter,
+  pushRouter,
   orderRouter // dormant: payments are off until the revenue model lands
 );
 apiRouter.use("/videos", videoRouter);

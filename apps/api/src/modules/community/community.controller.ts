@@ -7,6 +7,7 @@ import { redis } from "../../platform/redis";
 import { notify } from "../notifications/notifications.service";
 import { courseCacheKey } from "../../platform/cache";
 import sendMail from "../../platform/mail";
+import { sendPushToUser } from "../push/push.service";
 import { z } from "zod";
 import { logger } from "../../platform/logger";
 
@@ -184,6 +185,12 @@ export const addAnswer = CatchAsyncError(
         } catch (error) {
           logger.error({ err: error, questionId }, "question reply mail failed");
         }
+
+        void sendPushToUser(question.user.id, {
+          title: "Respondieron tu pregunta",
+          body: `Tu pregunta en "${question.lesson.title}" tiene una respuesta nueva.`,
+          data: { questionId },
+        });
       }
 
       res.status(200).json({

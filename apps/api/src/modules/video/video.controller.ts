@@ -5,6 +5,7 @@ import ErrorHandler from "../../http/ErrorHandler";
 import { prisma } from "../../platform/db";
 import { resolvePlaybackUrlWithMetrics, verifyVideoRef } from "./videoDelivery.service";
 import { recordLessonProgress } from "../progress/progress.service";
+import { instructorAllowlist, isInstructorAllowed, isValidDid } from "./instructors";
 
 const lessonPlaybackSchema = z.object({
   lessonId: z.string().min(1, "lessonId is required"),
@@ -359,6 +360,41 @@ export const setLessonVideoRef = CatchAsyncError(
       success: true,
       lessonId,
       videoUrl,
+    });
+  }
+);
+
+/**
+ * GET /api/v1/videos/instructors/check?did=did:plc:…   (admin only)
+ *
+ * Lets the upload panel ask "may this Bluesky account publish lesson videos?"
+ * right after connecting, instead of the admin finding out at the link step —
+ * after a long upload and a public record already exists. Same rule the attach
+ * endpoint and playback enforce (modules/video/instructors.ts).
+ *
+ * `restricted: false` means no allowlist is configured (local dev), where
+ * every account is allowed.
+ */
+export const checkInstructor = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const parsed = z
+      .object({
+        did: z
+          .string()
+          .refine(isValidDid, "did must be a valid did:plc or did:web identifier"),
+      })
+      .safeParse(req.query);
+    if (!parsed.success) {
+      return next(
+        new ErrorHandler(parsed.error.issues.map((e) => e.message).join(", "), 400)
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      did: parsed.data.did.toLowerCase(),
+      allowed: isInstructorAllowed(parsed.data.did),
+      restricted: instructorAllowlist().length > 0,
     });
   }
 );

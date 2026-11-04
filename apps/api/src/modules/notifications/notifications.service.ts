@@ -1,4 +1,5 @@
 import { prisma } from "../../platform/db";
+import { sendPushToUser } from "../push/push.service";
 import { ADMIN_ROOM, emitToAll, emitToRoom, userRoom } from "../../platform/realtime";
 
 export type NotificationAudience = "admin" | "user";
@@ -30,6 +31,10 @@ export async function notify(input: NotifyInput) {
     },
   });
   publishNotification(notification);
+  // Learner inbox items also go to their phones (no-op without a registered token).
+  if (input.audience === "user" && input.userId) {
+    void sendPushToUser(input.userId, { title: input.title, body: input.message });
+  }
   return notification;
 }
 

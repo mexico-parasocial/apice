@@ -55,6 +55,7 @@ model User {
   certificates           Certificate[]
   videoViews             VideoView[]
   credentialPublications CredentialPublication[]
+  pushTokens             PushToken[]
 
   @@index([blueskyDid])
 }
@@ -70,6 +71,10 @@ model Course {
   tags           String
   level          String
   demoUrl        String
+  instructorName   String?
+  instructorTitle  String?
+  instructorBio    String?
+  instructorHandle String?
   benefits       Json[]
   prerequisites  Json[]
   atprotoUri     String?
@@ -321,6 +326,20 @@ model CredentialPublication {
   @@index([status, nextAttemptAt])
   @@index([userId])
   @@index([courseId])
+}
+
+/// Expo push tokens registered by the mobile app. One user may have several
+/// (multiple devices); stale tokens are pruned when Expo reports them dead.
+model PushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Order {
