@@ -20,5 +20,9 @@ export const COURSE_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
  * replier emails. Bumping the prefix means those stale entries are never
  * read again and simply age out under their TTL. Bump again if the cached
  * shape changes in a way old entries must not be served.
+ *
+ * The cached value is the enriched public course (course row + `courseData`
+ * without questions + `reviews` with their replies). Any write that changes
+ * one of those must `del` this key; never `set` it with anything else.
  */
 export const courseCacheKey = (courseId: string) => `course:v2:${courseId}`;

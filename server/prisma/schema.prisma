@@ -10,10 +10,11 @@ generator client {
   previewFeatures = ["omitApi"]
 }
 
+// Deleting a user takes their INE verification (identity documents) with them.
 model INEVerification {
   id        String   @id @default(uuid())
   userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   frontUrl  String
   backUrl   String
   status    String // pending | approved | rejected
@@ -179,7 +180,8 @@ model Question {
   lessonId  String
   lesson    CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   userId    String
-  user      User         @relation(fields: [userId], references: [id])
+  // Community content goes with its author (answers to it cascade too).
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   question  String
   replies   Answer[]
   createdAt DateTime     @default(now())
@@ -194,7 +196,7 @@ model Answer {
   questionId String
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   answer     String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -208,7 +210,8 @@ model Review {
   courseId  String
   course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   userId    String
-  user      User          @relation(fields: [userId], references: [id])
+  // Cascades on user delete; deleteUser recomputes the course's rating.
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   rating    Int
   comment   String
   replies   ReviewReply[]
@@ -224,7 +227,7 @@ model ReviewReply {
   reviewId  String
   review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   comment   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -286,12 +289,15 @@ model Certificate {
   @@index([courseId])
 }
 
+// Orders are financial records: they outlive the user (who is unlinked, not
+// erased with them) and block deleting the course they paid for, since the
+// course is what says what was bought and at what price.
 model Order {
   id           String   @id @default(uuid())
   courseId     String
-  course       Course   @relation(fields: [courseId], references: [id])
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   payment_info Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
