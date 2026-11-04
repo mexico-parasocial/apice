@@ -1,9 +1,7 @@
 import { prisma } from "../utils/db";
 import ErrorHandler from "../utils/ErrorHandler";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
-import jwt, { JwtPayload, Secret } from "jsonwebtoken";
-import ejs from "ejs";
-import path from "path";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import sendMail from "../utils/sendMail";
 import {
   isRefreshTokenValid,
@@ -16,6 +14,7 @@ import {
 import { redis } from "../utils/redis";
 import { SESSION_CACHE_TTL_SECONDS, courseCacheKey } from "../utils/cache";
 import bcrypt from "bcryptjs";
+import { createHash, randomInt, randomUUID } from "crypto";
 import {
   getAllUsersService,
   getUserById,
@@ -29,151 +28,155 @@ import { NextFunction, Request, Response } from "express";
 import { logger } from "../utils/logger";
 
 // register user
-interface IRegistrationBody {
-  name: string;
-  email: string;
-  password: string;
-  avatar?: string;
-}
-
+//
+// Pending registrations live in Redis, keyed by an opaque random id that is
+// handed to the client as `activationToken`. The password is bcrypt-hashed
+// before it is stored and never leaves the server. (It used to travel inside
+// a signed — not encrypted — JWT returned to the client, readable by anyone.)
+// The code is 6 digits from a CSPRNG, with a per-registration attempt cap so
+// it can't be brute-forced by rotating IPs past the rate limiter.
 const registrationSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   email: z.string().email("Invalid email address"),
   password: z
     .string()
-    .min(6, "Password must be at least 6 characters")
+    .min(8, "Password must be at least 8 characters")
     .max(128, "Password is too long"),
 });
 
+const REGISTRATION_TTL_SECONDS = 10 * 60;
+const MAX_ACTIVATION_ATTEMPTS = 5;
+const registrationKey = (id: string) => `registration:${id}`;
+
+interface PendingRegistration {
+  name: string;
+  email: string;
+  passwordHash: string;
+  codeHash: string;
+  attempts: number;
+}
+
+const hashCode = (code: string) =>
+  createHash("sha256").update(code).digest("hex");
+
 export const registrationUser = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const parsed = registrationSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return next(
-          new ErrorHandler(
-            parsed.error.issues.map((e) => e.message).join(", "),
-            400
-          )
-        );
-      }
-
-      const { name, email, password } = parsed.data;
-
-      const isEmailExist = await prisma.user.findUnique({
-        where: { email },
-      });
-      if (isEmailExist) {
-        return next(new ErrorHandler("Email already exist", 400));
-      }
-
-      const user: IRegistrationBody = {
-        name,
-        email,
-        password,
-      };
-
-      const activationToken = createActivationToken(user);
-
-      const activationCode = activationToken.activationCode;
-
-      const data = { user: { name: user.name }, activationCode };
-      const html = await ejs.renderFile(
-        path.join(__dirname, "../mails/activation-mail.ejs"),
-        data
+    const parsed = registrationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return next(
+        new ErrorHandler(
+          parsed.error.issues.map((e) => e.message).join(", "),
+          400
+        )
       );
-
-      try {
-        await sendMail({
-          email: user.email,
-          subject: "Activate your account",
-          template: "activation-mail.ejs",
-          data,
-        });
-
-        res.status(201).json({
-          success: true,
-          message: `Please check your email: ${user.email} to activate your account!`,
-          activationToken: activationToken.token,
-        });
-      } catch (error: any) {
-        return next(new ErrorHandler(error.message, 400));
-      }
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
     }
+
+    const { name, email, password } = parsed.data;
+
+    const isEmailExist = await prisma.user.findUnique({ where: { email } });
+    if (isEmailExist) {
+      return next(new ErrorHandler("Email already exist", 409));
+    }
+
+    const activationCode = randomInt(0, 1_000_000).toString().padStart(6, "0");
+    const id = randomUUID();
+    const pending: PendingRegistration = {
+      name,
+      email,
+      passwordHash: await bcrypt.hash(password, 10),
+      codeHash: hashCode(activationCode),
+      attempts: 0,
+    };
+    await redis.set(
+      registrationKey(id),
+      JSON.stringify(pending),
+      "EX",
+      REGISTRATION_TTL_SECONDS
+    );
+
+    try {
+      await sendMail({
+        email,
+        subject: "Activate your account",
+        template: "activation-mail.ejs",
+        data: { user: { name }, activationCode },
+      });
+    } catch (error: any) {
+      await redis.del(registrationKey(id));
+      logger.error({ err: error }, "activation mail failed");
+      return next(new ErrorHandler("Could not send the activation email", 502));
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Please check your email: ${email} to activate your account!`,
+      activationToken: id,
+    });
   }
 );
 
-interface IActivationToken {
-  token: string;
-  activationCode: string;
-}
-
-export const createActivationToken = (user: any): IActivationToken => {
-  const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
-
-  const token = jwt.sign(
-    {
-      user,
-      activationCode,
-    },
-    process.env.ACTIVATION_SECRET as Secret,
-    {
-      expiresIn: "5m",
-    }
-  );
-
-  return { token, activationCode };
-};
-
 // activate user
-interface IActivationRequest {
-  activation_token: string;
-  activation_code: string;
-}
+const activationSchema = z.object({
+  activation_token: z.string().min(1),
+  activation_code: z.string().regex(/^\d{6}$/, "Invalid activation code"),
+});
 
 export const activateUser = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { activation_token, activation_code } =
-        req.body as IActivationRequest;
-
-      const newUser: { user: any; activationCode: string } = jwt.verify(
-        activation_token,
-        process.env.ACTIVATION_SECRET as string
-      ) as { user: any; activationCode: string };
-
-      if (newUser.activationCode !== activation_code) {
-        return next(new ErrorHandler("Invalid activation code", 400));
-      }
-
-      const { name, email, password } = newUser.user;
-
-      const existUser = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      if (existUser) {
-        return next(new ErrorHandler("Email already exist", 400));
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const user = await prisma.user.create({
-        data: {
-          name,
-          email,
-          password: hashedPassword,
-        },
-      });
-
-      res.status(201).json({
-        success: true,
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+    const parsed = activationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return next(
+        new ErrorHandler(
+          parsed.error.issues.map((e) => e.message).join(", "),
+          400
+        )
+      );
     }
+    const { activation_token, activation_code } = parsed.data;
+    const key = registrationKey(activation_token);
+
+    const raw = await redis.get(key);
+    if (!raw) {
+      return next(
+        new ErrorHandler("Activation expired, please register again", 400)
+      );
+    }
+    const pending: PendingRegistration = JSON.parse(raw);
+
+    // Comparing SHA-256 digests: a timing difference leaks nothing usable
+    // about the code itself, and the attempt cap bounds guessing.
+    if (hashCode(activation_code) !== pending.codeHash) {
+      pending.attempts += 1;
+      if (pending.attempts >= MAX_ACTIVATION_ATTEMPTS) {
+        await redis.del(key);
+        return next(
+          new ErrorHandler("Too many attempts, please register again", 400)
+        );
+      }
+      await redis.set(key, JSON.stringify(pending), "KEEPTTL");
+      return next(new ErrorHandler("Invalid activation code", 400));
+    }
+
+    // One-time: consume before creating, so a replay can't double-create.
+    await redis.del(key);
+
+    const existUser = await prisma.user.findUnique({
+      where: { email: pending.email },
+    });
+    if (existUser) {
+      return next(new ErrorHandler("Email already exist", 409));
+    }
+
+    await prisma.user.create({
+      data: {
+        name: pending.name,
+        email: pending.email,
+        password: pending.passwordHash,
+        isVerified: true,
+      },
+    });
+
+    res.status(201).json({ success: true });
   }
 );
 

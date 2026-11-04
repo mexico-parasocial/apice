@@ -9,12 +9,9 @@ type Props = {
   setRoute: (route: string) => void;
 };
 
-type VerifyNumber = {
-  "0": string;
-  "1": string;
-  "2": string;
-  "3": string;
-};
+const CODE_LENGTH = 6;
+
+type VerifyNumber = Record<string, string>;
 
 const Verification: FC<Props> = ({ setRoute }) => {
   const { token } = useSelector((state: any) => state.auth);
@@ -42,18 +39,19 @@ const Verification: FC<Props> = ({ setRoute }) => {
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
   ];
 
-  const [verifyNumber, setVerifyNumber] = useState<VerifyNumber>({
-    0: "",
-    1: "",
-    2: "",
-    3: "",
-  });
+  const [verifyNumber, setVerifyNumber] = useState<VerifyNumber>(() =>
+    Object.fromEntries(
+      Array.from({ length: CODE_LENGTH }, (_, i) => [String(i), ""])
+    )
+  );
 
   const verificationHandler = async () => {
     const verificationNumber = Object.values(verifyNumber).join("");
-    if (verificationNumber.length !== 4) {
+    if (verificationNumber.length !== CODE_LENGTH) {
       setInvalidError(true);
       return;
     }
@@ -70,7 +68,7 @@ const Verification: FC<Props> = ({ setRoute }) => {
 
     if (value === "" && index > 0) {
       inputRefs[index - 1].current?.focus();
-    } else if (value.length === 1 && index < 3) {
+    } else if (value.length === 1 && index < CODE_LENGTH - 1) {
       inputRefs[index + 1].current?.focus();
     }
   };
@@ -92,14 +90,14 @@ const Verification: FC<Props> = ({ setRoute }) => {
             type="number"
             key={key}
             ref={inputRefs[index]}
-            className={`w-[65px] h-[65px] bg-transparent border-[3px] rounded-[10px] flex items-center text-black dark:text-white justify-center text-[18px] font-Poppins outline-none text-center ${
+            className={`w-[52px] h-[52px] bg-transparent border-[3px] rounded-[10px] flex items-center text-black dark:text-white justify-center text-[18px] font-Poppins outline-none text-center ${
               invalidError
                 ? "shake border-red-500"
                 : "dark:border-white border-[#0000004a]"
             }`}
             placeholder=""
             maxLength={1}
-            value={verifyNumber[key as keyof VerifyNumber]}
+            value={verifyNumber[key]}
             onChange={(e) => handleInputChange(index, e.target.value)}
           />
         ))}

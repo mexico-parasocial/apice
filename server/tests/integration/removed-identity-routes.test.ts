@@ -22,7 +22,6 @@ const ACCESS_SECRET = vi.hoisted(() => {
   vi.stubEnv("REDIS_URL", "redis://localhost:6379");
   vi.stubEnv("ACCESS_TOKEN", "test-access-token-secret");
   vi.stubEnv("REFRESH_TOKEN", "test-refresh-token-secret");
-  vi.stubEnv("ACTIVATION_SECRET", "test-activation-secret");
   // pino-http logs every request; keep the test output readable.
   vi.stubEnv("LOG_LEVEL", "silent");
   return "test-access-token-secret";

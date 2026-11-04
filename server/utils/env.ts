@@ -34,7 +34,6 @@ export type KnownEnvVar =
   | "REFRESH_TOKEN"
   | "ACCESS_TOKEN_EXPIRE"
   | "REFRESH_TOKEN_EXPIRE"
-  | "ACTIVATION_SECRET"
   | "SMTP_HOST"
   | "SMTP_PORT"
   | "SMTP_SERVICE"
@@ -93,7 +92,6 @@ const envSchema = z.object({
 
   ACCESS_TOKEN: secret("ACCESS_TOKEN"),
   REFRESH_TOKEN: secret("REFRESH_TOKEN"),
-  ACTIVATION_SECRET: secret("ACTIVATION_SECRET"),
 
   // Without this the CORS layer silently falls back to localhost, so every
   // request from the real domain is rejected.
