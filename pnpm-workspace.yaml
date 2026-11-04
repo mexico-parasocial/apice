@@ -1,7 +1,6 @@
 packages:
   - 'apps/*'
   - 'packages/*'
-  - 'admin'
 
 overrides:
   '@types/react': '^18.3.31'
